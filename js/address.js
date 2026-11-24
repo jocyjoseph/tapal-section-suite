@@ -28,7 +28,6 @@ const AddressModule = {
     if (subName === "queue") this.renderQueue();
   },
 
-  // Helper to check if a Code is a real official code vs auto-generated internal ID
   isDisplayableCode(code) {
     const c = String(code || "").trim();
     if (!c) return false;
@@ -122,15 +121,57 @@ const AddressModule = {
   },
 
   renderDesignationPills() {
-    document.getElementById("newAddrDesigPills").innerHTML = [
-      `<button type="button" class="smart-chip" data-pick-desig="">(None / Individual)</button>`,
-      ...CONFIG.DEFAULT_DESIGNATIONS.map(d => `<button type="button" class="smart-chip" data-pick-desig="${d}">${d}</button>`)
-    ].join("");
-
     document.getElementById("bulkDesigPills").innerHTML = [
-      `<button type="button" class="smart-chip" data-bulk-desig="">(Clear Designation)</button>`,
+      `<button type="button" class="smart-chip" data-bulk-desig="">(No Designation)</button>`,
       ...CONFIG.DEFAULT_DESIGNATIONS.map(d => `<button type="button" class="smart-chip" data-bulk-desig="${d}">${d}</button>`)
     ].join("");
+  },
+
+  // Helper to build clean Principal & Clerk contact HTML for both Directory & Large View
+  buildContactsHTML(a, isLargeView = false) {
+    const prinText = [a.Principal_Name, a.Principal_Phone].filter(Boolean).join(" • ");
+    const clerkText = [a.Clerk_Name, a.Clerk_Phone].filter(Boolean).join(" • ");
+    const hasAnyPhone = Boolean(String(a.Principal_Phone || "").trim() || String(a.Clerk_Phone || "").trim());
+
+    if (isLargeView) {
+      const rows = [];
+      if (prinText) {
+        rows.push(`<div><strong>Principal:</strong> ${a.Principal_Name || ""}${a.Principal_Phone ? ` • <a href="tel:${a.Principal_Phone}">${a.Principal_Phone}</a>` : ""}</div>`);
+      }
+      if (clerkText) {
+        rows.push(`<div><strong>Clerk:</strong> ${a.Clerk_Name || ""}${a.Clerk_Phone ? ` • <a href="tel:${a.Clerk_Phone}">${a.Clerk_Phone}</a>` : ""}</div>`);
+      }
+      if (!hasAnyPhone) {
+        rows.push(`
+          <div class="mt-6">
+            <button type="button" class="btn-mini accent" data-large-add-phone="${a.Code}">+ Add phone number if available</button>
+          </div>
+        `);
+      }
+      return rows.length ? `<div class="large-reader-contacts">${rows.join("")}</div>` : "";
+    }
+
+    // Directory card pills
+    const pills = [];
+    if (prinText) {
+      const label = `Principal: ${[a.Principal_Name, a.Principal_Phone ? "(" + a.Principal_Phone + ")" : ""].filter(Boolean).join(" ")}`;
+      pills.push(a.Principal_Phone
+        ? `<a class="contact-pill" href="tel:${a.Principal_Phone}">${label}</a>`
+        : `<span class="contact-pill">${label}</span>`
+      );
+    }
+    if (clerkText) {
+      const label = `Clerk: ${[a.Clerk_Name, a.Clerk_Phone ? "(" + a.Clerk_Phone + ")" : ""].filter(Boolean).join(" ")}`;
+      pills.push(a.Clerk_Phone
+        ? `<a class="contact-pill" href="tel:${a.Clerk_Phone}">${label}</a>`
+        : `<span class="contact-pill">${label}</span>`
+      );
+    }
+    if (!hasAnyPhone) {
+      pills.push(`<button type="button" class="btn-mini" style="margin-top:4px;" data-edit-addr="${a.Code}">+ Add phone number</button>`);
+    }
+
+    return pills.length ? `<div class="mt-6">${pills.join(" ")}</div>` : "";
   },
 
   renderDirectory() {
@@ -148,13 +189,14 @@ const AddressModule = {
     const wrap = document.getElementById("addressDirectoryList");
 
     if (!list.length) {
-      wrap.innerHTML = `<div class="card muted small">No matching address. Use "+ Add Address" to add an office, institution, or individual.</div>`;
+      wrap.innerHTML = `<div class="card muted small">No matching address. Use "+ Add Address" to add a school, office, institution, or individual.</div>`;
       return;
     }
 
     wrap.innerHTML = list.slice(0, 60).map(a => {
       const queuedCount = this.dispatchQueue.filter(q => String(q.Code) === String(a.Code)).length;
-      const addrLines = [a.Address_Line_1, a.Address_Line_2, a.District].filter(Boolean).join(", ");
+      const addrParts = [a.Address_Line_1, a.Address_Line_2, a.District].filter(Boolean).join(", ");
+      const fullAddrLine = [addrParts, a.PIN ? "PIN - " + a.PIN : ""].filter(Boolean).join(", ");
       const showBadge = this.isDisplayableCode(a.Code);
 
       return `
@@ -167,17 +209,13 @@ const AddressModule = {
             </div>
             <div class="row-gap">
               <button type="button" class="btn-mini" data-view-large="${a.Code}" title="Large font view to copy by hand">👁️</button>
-              <button type="button" class="btn-mini" data-edit-addr="${a.Code}" title="View or edit address & contacts">✎</button>
+              <button type="button" class="btn-mini" data-edit-addr="${a.Code}" title="View or edit address & phone numbers">✎</button>
             </div>
           </div>
 
-          <div class="small mt-6">${addrLines}${a.PIN ? " - " + a.PIN : ""}</div>
+          ${fullAddrLine ? `<div class="small mt-6">${fullAddrLine}</div>` : ""}
 
-          ${(a.Principal_Name || a.Principal_Phone || a.Clerk_Name || a.Clerk_Phone) ? `
-            <div class="mt-6">
-              ${(a.Principal_Name || a.Principal_Phone) ? `<a class="contact-pill" href="tel:${a.Principal_Phone || ""}">${a.Principal_Name || "Contact"} ${a.Principal_Phone ? "(" + a.Principal_Phone + ")" : ""}</a>` : ""}
-              ${(a.Clerk_Name || a.Clerk_Phone) ? `<a class="contact-pill" href="tel:${a.Clerk_Phone || ""}">Clerk: ${a.Clerk_Name || ""} ${a.Clerk_Phone ? "(" + a.Clerk_Phone + ")" : ""}</a>` : ""}
-            </div>` : ""}
+          ${this.buildContactsHTML(a, false)}
 
           <div class="row-between mt-8">
             <span class="small muted">${queuedCount > 0 ? `✓ In Queue (${queuedCount} label${queuedCount > 1 ? "s" : ""})` : "Not selected"}</span>
@@ -193,28 +231,23 @@ const AddressModule = {
   },
 
   // =========================================================
-  // MULTI-RECIPIENT DISPATCH QUEUE (WITH SELECTIVE CHECKBOXES)
+  // MULTI-RECIPIENT DISPATCH QUEUE (FLEXIBLE DESIGNATION)
   // =========================================================
-  addToQueue(code, customDesignation = undefined) {
+  addToQueue(code) {
     const addr = this.getAllAddresses().find(a => String(a.Code) === String(code));
     if (!addr) return;
 
-    const existingCopies = this.dispatchQueue.filter(q => String(q.Code) === String(code)).length;
-    let defaultDesig = customDesignation !== undefined ? customDesignation : (addr.Designation !== undefined ? addr.Designation : "The Principal");
-    if (customDesignation === undefined && existingCopies === 1 && defaultDesig) {
-      defaultDesig = "The Camp Officer";
-    }
-
+    // Start with blank Designation so the user has full flexibility to address anyone at this address
     this.dispatchQueue.push({
       ...addr,
       queueId: "Q-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6),
       checked: true,
-      Designation: defaultDesig
+      Designation: ""
     });
 
     this.updateQueueBadges();
     this.renderDirectory();
-    showToast(`Added ${addr.School}${defaultDesig ? " (" + defaultDesig + ")" : ""}`);
+    showToast(`Added ${addr.School} to Queue`);
   },
 
   removeOneFromQueueByCode(code) {
@@ -252,7 +285,6 @@ const AddressModule = {
 
     wrap.innerHTML = this.dispatchQueue.map((item, idx) => {
       const isStandardDesig = CONFIG.DEFAULT_DESIGNATIONS.includes(item.Designation);
-      // Only show text in the right-hand custom box if the user typed a custom name/designation
       const customTextVal = isStandardDesig ? "" : (item.Designation || "");
       const codeTag = this.isDisplayableCode(item.Code) ? ` (${item.Code})` : "";
 
@@ -264,13 +296,13 @@ const AddressModule = {
               <span>#${idx + 1} • ${item.School}${codeTag}</span>
             </label>
             <div class="row-gap">
-              <button type="button" class="btn-mini accent" data-dup-qid="${item.queueId}" title="Duplicate with another recipient">+ Copy</button>
+              <button type="button" class="btn-mini accent" data-dup-qid="${item.queueId}" title="Duplicate for another recipient at this address">+ Copy</button>
               <button type="button" class="btn-mini" data-rm-qid="${item.queueId}" title="Remove from queue">×</button>
             </div>
           </div>
           <div class="small muted mt-6">${[item.Address_Line_1, item.District, item.PIN].filter(Boolean).join(", ")}</div>
           <div class="row-gap mt-8">
-            <select data-qdesig-select="${item.queueId}" style="max-width:175px;" title="Choose standard designation">
+            <select data-qdesig-select="${item.queueId}" style="max-width:175px;" title="Optional: Choose recipient designation">
               <option value="">-- Designation --</option>
               ${CONFIG.DEFAULT_DESIGNATIONS.map(d => `<option value="${d}" ${item.Designation === d ? "selected" : ""}>${d}</option>`).join("")}
             </select>
@@ -281,7 +313,7 @@ const AddressModule = {
   },
 
   // =========================================================
-  // ADD NEW ADDRESS (SCHOOLS, OFFICES, INSTITUTIONS, INDIVIDUALS)
+  // ADD NEW ADDRESS (PURE PHYSICAL ADDRESS + CONTACTS)
   // =========================================================
   async saveNewAddress(permanent) {
     const school = document.getElementById("newAddrSchool").value.trim();
@@ -294,10 +326,7 @@ const AddressModule = {
     }
 
     const rawCode = document.getElementById("newAddrCode").value.trim();
-    // Generate internal ID silently if no official code was entered
     const code = rawCode || (permanent ? "ID-" + Date.now().toString().slice(-6) : "TMP-" + Date.now().toString().slice(-6));
-    // Allow blank designation for individuals
-    const desig = document.getElementById("newAddrDesig").value.trim();
 
     const newRecord = {
       District_Sl: rawCode ? "NEW" : "GEN",
@@ -307,7 +336,7 @@ const AddressModule = {
       Address_Line_2: document.getElementById("newAddrLine2").value.trim(),
       District: district,
       PIN: pin,
-      Designation: desig,
+      Designation: "",
       Principal_Name: document.getElementById("newAddrPrinName").value.trim(),
       Principal_Phone: document.getElementById("newAddrPrinPhone").value.trim(),
       Clerk_Name: document.getElementById("newAddrClerkName").value.trim(),
@@ -324,8 +353,8 @@ const AddressModule = {
       showToast(`Added ${school} for today's queue!`);
     }
 
-    this.addToQueue(code, desig);
-    ["newAddrDesig", "newAddrCode", "newAddrSchool", "newAddrLine1", "newAddrLine2", "newAddrDistrict", "newAddrPin", "newAddrPrinName", "newAddrPrinPhone", "newAddrClerkName", "newAddrClerkPhone"].forEach(id => {
+    this.addToQueue(code);
+    ["newAddrCode", "newAddrSchool", "newAddrLine1", "newAddrLine2", "newAddrDistrict", "newAddrPin", "newAddrPrinName", "newAddrPrinPhone", "newAddrClerkName", "newAddrClerkPhone"].forEach(id => {
       document.getElementById(id).value = "";
     });
     this.renderDistrictFilters();
@@ -342,7 +371,6 @@ const AddressModule = {
     this.pendingEditPayload = null;
 
     document.getElementById("edCode").value = this.isDisplayableCode(addr.Code) ? addr.Code : "(No Code)";
-    document.getElementById("edDesignation").value = addr.Designation || "";
     document.getElementById("edSchool").value = addr.School || "";
     document.getElementById("edLine1").value = addr.Address_Line_1 || "";
     document.getElementById("edLine2").value = addr.Address_Line_2 || "";
@@ -376,7 +404,6 @@ const AddressModule = {
 
     const updated = {
       ...orig,
-      Designation: document.getElementById("edDesignation").value.trim(),
       School: document.getElementById("edSchool").value.trim(),
       Address_Line_1: document.getElementById("edLine1").value.trim(),
       Address_Line_2: document.getElementById("edLine2").value.trim(),
@@ -389,16 +416,15 @@ const AddressModule = {
     };
 
     const labels = {
-      Designation: "Designation",
-      School: "Name/Office",
+      School: "Name / Office / School",
       Address_Line_1: "Address Line 1",
       Address_Line_2: "Address Line 2",
       District: "District",
       PIN: "PIN",
-      Principal_Name: "Head/Principal Name",
-      Principal_Phone: "Phone",
-      Clerk_Name: "Clerk/Alt Name",
-      Clerk_Phone: "Alt Phone"
+      Principal_Name: "Principal Name",
+      Principal_Phone: "Principal Phone",
+      Clerk_Name: "Clerk Name",
+      Clerk_Phone: "Clerk Phone"
     };
 
     const diffs = [];
@@ -432,7 +458,9 @@ const AddressModule = {
 
     this.dispatchQueue.forEach(q => {
       if (String(q.Code) === String(updated.Code)) {
+        const keepDesig = q.Designation;
         Object.assign(q, updated);
+        q.Designation = keepDesig;
       }
     });
 
@@ -443,17 +471,18 @@ const AddressModule = {
     document.getElementById("editAddressModal").classList.add("hidden");
     this.renderDirectory();
     this.renderQueue();
-    showToast("Address updated successfully ✓");
+    showToast("Address & contacts updated ✓");
   },
 
   // =========================================================
-  // LARGE-FONT "COPY BY HAND" READER (UNIFORM FONT, BOLD "To,")
+  // LARGE-FONT "COPY BY HAND" READER
   // =========================================================
   openLargeReader(singleCode = null) {
     if (singleCode) {
       const found = this.getAllAddresses().find(a => String(a.Code) === String(singleCode));
       if (!found) return;
-      this.largeReaderList = [found];
+      // Opening directly from Directory shows pure physical address (Designation blank)
+      this.largeReaderList = [{ ...found, Designation: "" }];
     } else if (this.dispatchQueue.length) {
       this.largeReaderList = [...this.dispatchQueue];
     } else {
@@ -475,27 +504,22 @@ const AddressModule = {
     body.style.fontSize = `${this.largeFontSize}px`;
 
     const codeSuffix = this.isDisplayableCode(item.Code) ? ` (${item.Code})` : "";
+    const districtPin = [item.District, item.PIN ? "PIN - " + item.PIN : ""].filter(Boolean).join(", ");
+
     const lines = [
       `<div style="font-weight:700;">To,</div>`,
       item.Designation ? `<div>${item.Designation},</div>` : "",
       `<div>${item.School}${codeSuffix}</div>`,
       item.Address_Line_1 ? `<div>${item.Address_Line_1}</div>` : "",
       item.Address_Line_2 ? `<div>${item.Address_Line_2}</div>` : "",
-      `<div>${[item.District, item.PIN ? "PIN - " + item.PIN : ""].filter(Boolean).join(", ")}</div>`
+      districtPin ? `<div>${districtPin}</div>` : ""
     ].filter(Boolean).join("");
 
-    const contacts = (item.Principal_Name || item.Principal_Phone || item.Clerk_Name || item.Clerk_Phone)
-      ? `<div class="large-reader-contacts">
-          ${item.Principal_Name || item.Principal_Phone ? `<div>Contact: ${item.Principal_Name || "-"} • <a href="tel:${item.Principal_Phone}">${item.Principal_Phone || ""}</a></div>` : ""}
-          ${item.Clerk_Name || item.Clerk_Phone ? `<div>Clerk/Alt: ${item.Clerk_Name || "-"} • <a href="tel:${item.Clerk_Phone}">${item.Clerk_Phone || ""}</a></div>` : ""}
-        </div>`
-      : "";
-
-    body.innerHTML = lines + contacts;
+    body.innerHTML = lines + this.buildContactsHTML(item, true);
   },
 
   // =========================================================
-  // A4 STICKER SHEET PRINT PREVIEW (UNIFORM FONT, BOLD "To,")
+  // A4 STICKER SHEET PRINT PREVIEW
   // =========================================================
   openPrintPreview() {
     if (!this.dispatchQueue.length) {
@@ -520,6 +544,7 @@ const AddressModule = {
 
     const labels = this.dispatchQueue.map(a => {
       const codePart = (showCode && this.isDisplayableCode(a.Code)) ? ` (${a.Code})` : "";
+      const districtPin = [a.District, a.PIN ? "PIN - " + a.PIN : ""].filter(Boolean).join(", ");
       return `
         <div class="sticker-cell">
           ${tagText ? `<div class="sticker-tag">${tagText}</div>` : ""}
@@ -528,7 +553,7 @@ const AddressModule = {
           <div class="sticker-line">${a.School}${codePart}</div>
           ${a.Address_Line_1 ? `<div class="sticker-line">${a.Address_Line_1}</div>` : ""}
           ${a.Address_Line_2 ? `<div class="sticker-line">${a.Address_Line_2}</div>` : ""}
-          <div class="sticker-line">${[a.District, a.PIN ? "PIN - " + a.PIN : ""].filter(Boolean).join(", ")}</div>
+          ${districtPin ? `<div class="sticker-line">${districtPin}</div>` : ""}
         </div>
       `;
     });
@@ -560,9 +585,6 @@ const AddressModule = {
       if (e.target.dataset.viewLarge) this.openLargeReader(e.target.dataset.viewLarge);
       if (e.target.dataset.editAddr) this.openEditAddressModal(e.target.dataset.editAddr);
 
-      if (e.target.dataset.pickDesig !== undefined) {
-        document.getElementById("newAddrDesig").value = e.target.dataset.pickDesig;
-      }
       if (e.target.dataset.bulkDesig !== undefined) {
         document.getElementById("bulkDesigInput").value = e.target.dataset.bulkDesig;
       }
@@ -579,7 +601,6 @@ const AddressModule = {
       }
     });
 
-    // Queue Checkboxes & Designation Controls
     document.getElementById("dispatchQueueList").addEventListener("change", (e) => {
       if (e.target.dataset.qcheck) {
         const item = this.dispatchQueue.find(q => q.queueId === e.target.dataset.qcheck);
@@ -591,7 +612,6 @@ const AddressModule = {
       if (qid) {
         const item = this.dispatchQueue.find(q => q.queueId === qid);
         if (item) item.Designation = e.target.value;
-        // Re-render keeps the custom text box clean with placeholder "Or type specific name..."
         this.renderQueue();
       }
     });
@@ -602,14 +622,12 @@ const AddressModule = {
         const item = this.dispatchQueue.find(q => q.queueId === qid);
         if (item) {
           item.Designation = e.target.value;
-          // Reset left dropdown to "-- Designation --" while typing a custom name
           const sel = document.querySelector(`[data-qdesig-select="${qid}"]`);
           if (sel) sel.value = "";
         }
       }
     });
 
-    // Select All / None in Queue
     document.getElementById("btnCheckAllQueue").addEventListener("click", () => {
       this.dispatchQueue.forEach(q => { q.checked = true; });
       this.renderQueue();
@@ -619,7 +637,6 @@ const AddressModule = {
       this.renderQueue();
     });
 
-    // Apply Designation ONLY to Checked Items in Queue
     document.getElementById("btnApplyBulkDesig").addEventListener("click", () => {
       const checkedItems = this.dispatchQueue.filter(q => q.checked);
       if (!checkedItems.length) {
@@ -652,6 +669,16 @@ const AddressModule = {
       document.getElementById("editAddrFooterBtns").classList.remove("hidden");
     });
     document.getElementById("btnConfirmAddrUpdateFinal").addEventListener("click", () => this.commitAddressUpdate());
+
+    // Large Reader Modal & "+ Add phone number" shortcut inside Large Reader
+    document.getElementById("largeReaderBody").addEventListener("click", (e) => {
+      if (e.target.dataset.largeAddPhone) {
+        const code = e.target.dataset.largeAddPhone;
+        document.getElementById("largeReaderModal").classList.add("hidden");
+        this.openEditAddressModal(code);
+        this.unlockAddressFields();
+      }
+    });
 
     document.getElementById("btnQuickLargeView").addEventListener("click", () => this.openLargeReader(null));
     document.getElementById("btnQueueLargeView").addEventListener("click", () => this.openLargeReader(null));
