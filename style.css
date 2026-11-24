@@ -161,7 +161,25 @@ input[type="text"], input[type="number"], input[type="datetime-local"], input[ty
 
 /* Compact Scanner & Interactive Barcode Chips */
 .scanner-compact { background: #f8fafc; border: 1px dashed #94a3b8; border-radius: 8px; padding: 8px; }
-.qr-box { margin-top: 8px; border-radius: 8px; overflow: hidden; }
+.qr-box {
+  position: relative;
+  margin-top: 8px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #000;
+}
+.qr-box::after {
+  content: "";
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: 50%;
+  height: 2px;
+  background: #facc15;
+  box-shadow: 0 0 6px rgba(250, 204, 21, 0.95);
+  pointer-events: none;
+  z-index: 10;
+}
 .b-chip {
   font-size: 0.76rem; padding: 5px 9px; border-radius: 6px; font-weight: 700;
   display: inline-flex; align-items: center; gap: 5px; cursor: pointer; border: 1px solid transparent;
