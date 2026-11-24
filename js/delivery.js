@@ -1,43 +1,89 @@
 const DeliveryModule = {
   currentTask: null,
   natureMode: "Same",
-  itemsDraft: [{ nature: "File", number: "" }],
-  attachmentsDraft: [""],
-  expandAllStages: false,
-  activeStage: 0,
-  activeUrgencyFilter: "ALL",
+  urgencyFilter: "ALL",
   selectedUnrepIds: new Set(),
   batchReportIds: [],
-  viewingReportTaskId: null,
+  groupReportIds: [],
+  inspectingTaskId: null,
+  allExpanded: false,
 
   init() {
     this.bindEvents();
     this.startNewTask(false);
-    AppStore.onUpdate(() => this.refreshAllViews());
+    AppStore.onUpdate(() => {
+      this.refreshLearnedOptions();
+      this.renderActiveTasks();
+      this.renderUnreportedTasks();
+      this.renderHistory();
+    });
   },
 
-  switchSubView(subName, preserveBatch = false) {
+  switchSubView(subName) {
     document.querySelectorAll("[data-dsub]").forEach(b => b.classList.toggle("active", b.dataset.dsub === subName));
     document.querySelectorAll(".dsub-panel").forEach(p => p.classList.add("hidden"));
     document.getElementById(`dsub-${subName}`).classList.remove("hidden");
-    if (!preserveBatch) {
-      this.batchReportIds = [];
-      const banner = document.getElementById("dBatchReportBanner");
-      if (banner) banner.classList.add("hidden");
+    if (subName === "tasks") this.renderActiveTasks();
+    if (subName === "unreported") this.renderUnreportedTasks();
+    if (subName === "history") this.renderHistory();
+  },
+
+  isCompletedLifecycle(t) {
+    const dir = t.Direction || "Outward";
+    if (dir === "Inward") {
+      return t.Delivery_Status === "Delivered";
     }
-    this.refreshAllViews();
+    return t.Delivery_Status === "Delivered" && Boolean(t.Receipt_Given);
   },
 
   // =========================================================
-  // TASK LIFECYCLE & STAGE ACCORDIONS
+  // DIRECTION-AWARE UI LABELS & STAGE 3 VISIBILITY
+  // =========================================================
+  applyDirectionUI(direction) {
+    const isInward = direction === "Inward";
+    this.setToggle("dDirectionGroup", direction);
+
+    document.getElementById("dActiveTaskBanner").textContent = this.currentTask && AppStore.deliveries.some(t => t.Task_ID === this.currentTask.Task_ID)
+      ? `${isInward ? "📥 Inward" : "📤 Outward"}: ${this.currentTask.Office_Name || "Task"}`
+      : (isInward ? "New Inward Collection" : "New Outward Delivery");
+
+    document.getElementById("dStage1Tag").textContent = isInward ? "STAGE 1 • COLLECTION DETAILS" : "STAGE 1 • TASK CREATION";
+    document.getElementById("lblDCreatedDT").textContent = isInward ? "1. Collection Date & Time" : "1. Date & Time";
+    document.getElementById("lblDOfficeName").textContent = isInward ? "2. From Office Name" : "2. To Office Name";
+    document.getElementById("lblDSection").textContent = isInward ? "4. Receiving Section (Our Office)" : "4. Section";
+
+    // Hide Planned Delivery Time for Inward collections; show for Outward
+    document.getElementById("dPlannedDTGroup").classList.toggle("hidden", isInward);
+    document.getElementById("lblDUrgency").textContent = isInward ? "12. Urgency Scale" : "13. Urgency Scale";
+
+    // Stage 2 labels
+    document.getElementById("dStage2Tag").textContent = isInward ? "STAGE 2 • HANDOVER TO OUR OFFICE" : "STAGE 2 • DELIVERY COMPLETION";
+    document.getElementById("lblDCompletedDT").textContent = isInward ? "3. Handover Date & Time" : "3. Delivery Date & Time";
+    document.getElementById("lblDStage2Receiver").textContent = isInward
+      ? "4. Receiver's Name (Our Office Staff)"
+      : "4. Receiver's Name (At External Office)";
+    document.getElementById("dStage2ReceiverName").placeholder = isInward
+      ? "Staff in our office who received the collected file/doc..."
+      : "Person at external office who accepted the file/doc...";
+    document.getElementById("btnSaveDStage2").textContent = isInward
+      ? "Save Stage 2 & Move to History"
+      : "Save Stage 2";
+
+    // Stage 3 is only for Outward deliveries
+    document.getElementById("dCard3").classList.toggle("hidden", isInward);
+  },
+
+  // =========================================================
+  // STAGE ACCORDIONS & TASK STATE
   // =========================================================
   startNewTask(notify = true) {
     this.batchReportIds = [];
-    const banner = document.getElementById("dBatchReportBanner");
-    if (banner) banner.classList.add("hidden");
+    document.getElementById("dBatchReportBanner").classList.add("hidden");
+    this.natureMode = "Same";
 
     this.currentTask = {
       Task_ID: "TASK-" + Date.now(),
+      Direction: "Outward",
       Created_DateTime: "",
       Office_Name: "",
       Designation: "",
@@ -45,7 +91,7 @@ const DeliveryModule = {
       Nature: "File",
       Item_Count: 1,
       Nature_Mode: "Same",
-      Items_JSON: "[]",
+      Items_JSON: JSON.stringify([{ number: "" }]),
       Items_Summary: "",
       Description: "",
       Has_Attachments: "No",
@@ -56,6 +102,7 @@ const DeliveryModule = {
       Delivery_Status: "",
       Not_Delivered_Reason: "",
       Completed_DateTime: "",
+      Stage2_Receiver_Name: "",
       Stage2_Comments: "",
       Receipt_Given: "",
       Receipt_No_Reason: "",
@@ -63,47 +110,27 @@ const DeliveryModule = {
       Reported_DateTime: ""
     };
 
-    this.natureMode = "Same";
-    this.itemsDraft = [{ nature: "File", number: "" }];
-    this.attachmentsDraft = [""];
-
     this.populateForm(this.currentTask);
     this.collapseAllStages();
-    this.refreshAllViews();
-    if (notify) showToast("Ready for New Task");
+    if (notify) showToast("Ready for new entry");
   },
 
-  loadTask(taskId, targetStage = 1) {
+  loadTask(taskId, stageToOpen = 1) {
     const found = AppStore.deliveries.find(t => String(t.Task_ID) === String(taskId));
     if (!found) return;
     this.batchReportIds = [];
-    const banner = document.getElementById("dBatchReportBanner");
-    if (banner) banner.classList.add("hidden");
-
-    this.currentTask = { ...found };
+    document.getElementById("dBatchReportBanner").classList.add("hidden");
+    this.currentTask = { ...found, Direction: found.Direction || "Outward" };
     this.natureMode = found.Nature_Mode || "Same";
-    try {
-      const parsedItems = JSON.parse(found.Items_JSON || "[]");
-      this.itemsDraft = parsedItems.length ? parsedItems : [{ nature: found.Nature || "File", number: "" }];
-    } catch (e) {
-      this.itemsDraft = [{ nature: found.Nature || "File", number: "" }];
-    }
-
-    try {
-      const parsedAtt = JSON.parse(found.Attachments_JSON || "[]");
-      this.attachmentsDraft = parsedAtt.length ? parsedAtt : [""];
-    } catch (e) {
-      this.attachmentsDraft = [""];
-    }
-
     this.switchSubView("entry");
     this.populateForm(this.currentTask);
-    this.openStage(targetStage);
+    this.openStage(stageToOpen);
     window.scrollTo({ top: 0, behavior: "smooth" });
   },
 
   openStage(stageNum) {
-    this.activeStage = stageNum;
+    this.allExpanded = false;
+    document.getElementById("btnToggleExpandAllDelivery").textContent = "Expand All";
 
     if (stageNum === 1) {
       const inp = document.getElementById("dCreatedDT");
@@ -119,17 +146,23 @@ const DeliveryModule = {
         inp.max = inp.value;
       }
     }
+    if (stageNum === 3) {
+      const inp = document.getElementById("dReportedDT");
+      if (!inp.value) {
+        inp.value = DateTimeHelper.nowLocalISO();
+        inp.max = inp.value;
+      }
+    }
 
     [1, 2, 3].forEach(n => {
-      const open = this.expandAllStages || n === stageNum;
+      const open = n === stageNum;
       document.getElementById(`dBody${n}`).classList.toggle("collapsed", !open);
       document.getElementById(`dChev${n}`).textContent = open ? "▼" : "▶";
     });
   },
 
   collapseAllStages() {
-    this.activeStage = 0;
-    this.expandAllStages = false;
+    this.allExpanded = false;
     document.getElementById("btnToggleExpandAllDelivery").textContent = "Expand All";
     [1, 2, 3].forEach(n => {
       document.getElementById(`dBody${n}`).classList.add("collapsed");
@@ -137,8 +170,28 @@ const DeliveryModule = {
     });
   },
 
+  toggleExpandAll() {
+    this.allExpanded = !this.allExpanded;
+    document.getElementById("btnToggleExpandAllDelivery").textContent = this.allExpanded ? "Collapse All" : "Expand All";
+    if (this.allExpanded) {
+      ["dCreatedDT", "dCompletedDT", "dReportedDT"].forEach(id => {
+        const inp = document.getElementById(id);
+        if (!inp.value) {
+          inp.value = DateTimeHelper.nowLocalISO();
+          inp.max = inp.value;
+        }
+      });
+    }
+    [1, 2, 3].forEach(n => {
+      document.getElementById(`dBody${n}`).classList.toggle("collapsed", !this.allExpanded);
+      document.getElementById(`dChev${n}`).textContent = this.allExpanded ? "▼" : "▶";
+    });
+  },
+
   populateForm(t) {
-    document.getElementById("dActiveTaskBanner").textContent = t.Office_Name ? `${t.Office_Name}` : "New Task";
+    const dir = t.Direction || "Outward";
+    this.applyDirectionUI(dir);
+
     document.getElementById("dCreatedDT").value = t.Created_DateTime || "";
     document.getElementById("dOfficeName").value = t.Office_Name || "";
     document.getElementById("dDesignation").value = t.Designation || "";
@@ -147,228 +200,183 @@ const DeliveryModule = {
     document.getElementById("dItemCount").value = t.Item_Count || 1;
     document.getElementById("dDescription").value = t.Description || "";
 
+    let items = [];
+    try { items = JSON.parse(t.Items_JSON || "[]"); } catch (e) {}
+    this.renderDynamicItems(items);
+
     this.setToggle("dAttachToggleGroup", t.Has_Attachments || "No");
+    const hasAtt = t.Has_Attachments === "Yes";
+    document.getElementById("dAttachmentsBox").classList.toggle("hidden", !hasAtt);
     document.getElementById("dAttachCount").value = t.Attachment_Count || 1;
-    document.getElementById("dAttachmentsBox").classList.toggle("hidden", (t.Has_Attachments || "No") !== "Yes");
+    let atts = [];
+    try { atts = JSON.parse(t.Attachments_JSON || "[]"); } catch (e) {}
+    if (hasAtt) this.renderAttachmentRows(atts);
 
     document.getElementById("dPlannedDT").value = t.Planned_Delivery_DT || "";
     this.setToggle("dUrgencyGroup", t.Urgency || "Normal");
 
-    this.syncNatureUI();
-    this.renderAttachmentRows();
-
-    // Stage 2
     this.setToggle("dStatusGroup", t.Delivery_Status || "");
     document.getElementById("dNotDeliveredBox").classList.toggle("hidden", t.Delivery_Status !== "Not Delivered");
     document.getElementById("dNotDelivReason").value = t.Not_Delivered_Reason || "";
     document.getElementById("dCompletedDT").value = t.Completed_DateTime || "";
+    document.getElementById("dStage2ReceiverName").value = t.Stage2_Receiver_Name || "";
     document.getElementById("dStage2Comments").value = t.Stage2_Comments || "";
 
-    // Stage 3
     this.setToggle("dReceiptGivenGroup", t.Receipt_Given || "");
-    this.updateStage3ConditionalFields(t.Receipt_Given || "", false);
+    document.getElementById("dReceiptNoBox").classList.toggle("hidden", t.Receipt_Given !== "No");
+    document.getElementById("dReceiptYesFields").classList.toggle("hidden", t.Receipt_Given !== "Yes");
     document.getElementById("dReceiptNoReason").value = t.Receipt_No_Reason || "";
     document.getElementById("dReceiverName").value = t.Receiver_Name || "";
     document.getElementById("dReportedDT").value = t.Reported_DateTime || "";
 
     this.updateStageSummaries();
+    this.refreshLearnedOptions();
   },
 
   // =========================================================
-  // DYNAMIC NATURE, COUNT, SAME/VARIOUS & ATTACHMENTS
+  // DYNAMIC ITEM & ATTACHMENT SCHEMAS
   // =========================================================
-  syncNatureUI() {
+  renderDynamicItems(existingItems = []) {
     const nature = document.getElementById("dNature").value.trim() || "File";
-    const count = Math.max(1, parseInt(document.getElementById("dItemCount").value || "1", 10));
+    const count = Math.max(1, Math.min(30, parseInt(document.getElementById("dItemCount").value || "1", 10)));
 
     document.getElementById("lblDItemCount").textContent = `6. No. of ${nature}`;
-    document.getElementById("lblDItemNumbers").textContent =
-      count > 1 && this.natureMode === "Various"
-        ? `7. Individual Item Nature & Number (${count} items)`
-        : `7. ${nature} No.`;
+    document.getElementById("lblDItemNumbers").textContent = count > 1 ? `7. ${nature} Numbers` : `7. ${nature} No.`;
 
-    const svWrap = document.getElementById("dSameVariousWrap");
-    svWrap.classList.toggle("hidden", count <= 1);
+    const modeWrap = document.getElementById("dSameVariousWrap");
+    modeWrap.classList.toggle("hidden", count <= 1);
     document.getElementById("btnDModeSame").classList.toggle("selected", this.natureMode === "Same");
     document.getElementById("btnDModeVarious").classList.toggle("selected", this.natureMode === "Various");
 
-    while (this.itemsDraft.length < count) {
-      this.itemsDraft.push({ nature, number: "" });
-    }
-    if (this.itemsDraft.length > count) {
-      this.itemsDraft = this.itemsDraft.slice(0, count);
-    }
-    if (this.natureMode === "Same") {
-      this.itemsDraft.forEach(item => { item.nature = nature; });
-    }
-
-    this.renderDynamicItemRows();
-  },
-
-  renderDynamicItemRows() {
     const wrap = document.getElementById("dDynamicItemsWrap");
-    const alphaNatures = this.getAlphabeticalList(AppStore.deliveries.map(d => d.Nature), CONFIG.DEFAULT_NATURES);
+    const rows = [];
+    for (let i = 0; i < count; i++) {
+      const prev = existingItems[i] || {};
+      const numVal = prev.number || "";
+      const natVal = prev.nature || "";
+      const itemLabel = this.natureMode === "Various" && natVal ? natVal : nature;
 
-    if (this.natureMode === "Various" && this.itemsDraft.length > 1) {
-      wrap.innerHTML = this.itemsDraft.map((item, idx) => `
-        <div class="row-gap mb-6">
-          <select data-item-nature="${idx}" style="max-width:145px;" title="Nature for Item #${idx + 1}">
-            ${alphaNatures.map(n => `<option value="${n}" ${item.nature === n ? "selected" : ""}>${n}</option>`).join("")}
-          </select>
-          <input type="text" data-item-num="${idx}" value="${item.number || ""}" placeholder="Item #${idx + 1} Number..." />
+      rows.push(`
+        <div class="dynamic-item-row">
+          <span class="badge primary" style="min-width:26px; text-align:center;">${i + 1}</span>
+          ${count > 1 && this.natureMode === "Various"
+            ? `<input type="text" class="d-item-nature" list="dNatureList" value="${natVal}" placeholder="Nature (e.g. Cheque)" style="max-width:125px;" />`
+            : ""}
+          <input type="text" class="d-item-number" value="${numVal}" placeholder="${itemLabel} No. #${i + 1}" />
         </div>
-      `).join("");
-    } else {
-      wrap.innerHTML = this.itemsDraft.map((item, idx) => `
-        <div class="row-gap mb-6">
-          <input type="text" data-item-num="${idx}" value="${item.number || ""}" placeholder="${item.nature} #${idx + 1} Number..." />
+      `);
+    }
+    wrap.innerHTML = rows.join("");
+  },
+
+  collectDynamicItems() {
+    const defaultNature = document.getElementById("dNature").value.trim() || "File";
+    const rows = document.querySelectorAll("#dDynamicItemsWrap .dynamic-item-row");
+    const items = [];
+    rows.forEach(row => {
+      const natInp = row.querySelector(".d-item-nature");
+      const numInp = row.querySelector(".d-item-number");
+      items.push({
+        nature: (natInp && natInp.value.trim()) ? natInp.value.trim() : defaultNature,
+        number: numInp ? numInp.value.trim() : ""
+      });
+    });
+    return items;
+  },
+
+  formatItemsSummary(items, fallbackNature = "File") {
+    if (!items || !items.length) return fallbackNature;
+    return items.map((it, idx) => {
+      const nat = it.nature || fallbackNature;
+      return it.number ? `${nat} #${it.number}` : `${nat} (${idx + 1})`;
+    }).join(", ");
+  },
+
+  renderAttachmentRows(existingAtts = []) {
+    const count = Math.max(1, Math.min(20, parseInt(document.getElementById("dAttachCount").value || "1", 10)));
+    const wrap = document.getElementById("dAttachRowsWrap");
+    const rows = [];
+    for (let i = 0; i < count; i++) {
+      const prev = existingAtts[i] || {};
+      rows.push(`
+        <div class="dynamic-item-row">
+          <span class="badge offline" style="min-width:26px; text-align:center;">${i + 1}</span>
+          <input type="text" class="d-att-nature" list="dNatureList" value="${prev.nature || ""}" placeholder="Nature (e.g. Cheque, Bill)" style="max-width:140px;" />
+          <input type="text" class="d-att-number" value="${prev.number || ""}" placeholder="No. / Ref" />
         </div>
-      `).join("");
+      `);
     }
+    wrap.innerHTML = rows.join("");
   },
 
-  renderAttachmentRows() {
-    const count = Math.max(1, parseInt(document.getElementById("dAttachCount").value || "1", 10));
-    while (this.attachmentsDraft.length < count) this.attachmentsDraft.push("");
-    if (this.attachmentsDraft.length > count) this.attachmentsDraft = this.attachmentsDraft.slice(0, count);
-
-    document.getElementById("dAttachRowsWrap").innerHTML = this.attachmentsDraft.map((txt, idx) => `
-      <div class="mb-6">
-        <input type="text" data-att-idx="${idx}" value="${txt || ""}" placeholder="Attachment #${idx + 1} details..." />
-      </div>
-    `).join("");
-  },
-
-  buildItemsSummary(items, hasAtt, attCount) {
-    const countsByNature = {};
-    items.forEach(it => {
-      const n = (it.nature || "File").trim();
-      countsByNature[n] = (countsByNature[n] || 0) + 1;
+  collectAttachments() {
+    if (this.getToggle("dAttachToggleGroup") !== "Yes") return [];
+    const rows = document.querySelectorAll("#dAttachRowsWrap .dynamic-item-row");
+    const atts = [];
+    rows.forEach(row => {
+      const nat = row.querySelector(".d-att-nature").value.trim() || "Attachment";
+      const num = row.querySelector(".d-att-number").value.trim();
+      atts.push({ nature: nat, number: num });
     });
-    const parts = Object.entries(countsByNature).map(([nat, cnt]) => {
-      const label = cnt > 1 && !nat.endsWith("s") ? nat + "s" : nat;
-      return `${cnt} ${label}`;
-    });
-    if (hasAtt === "Yes" && attCount > 0) {
-      parts.push(`${attCount} Attachment${attCount > 1 ? "s" : ""}`);
-    }
-    return parts.join(" & ");
+    return atts;
   },
 
   // =========================================================
-  // ALPHABETICAL & FREQUENCY SELF-LEARNING LISTS
-  // =========================================================
-  getAlphabeticalList(storedValues, defaults = []) {
-    const set = new Set(defaults);
-    storedValues.forEach(v => {
-      const clean = String(v || "").trim();
-      if (clean) set.add(clean);
-    });
-    return Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
-  },
-
-  refreshLearnedLists() {
-    const offices = this.getAlphabeticalList(AppStore.deliveries.map(d => d.Office_Name), CONFIG.DEFAULT_OFFICES);
-    document.getElementById("dOfficeChips").innerHTML = offices.slice(0, 8).map(o =>
-      `<button type="button" class="smart-chip" data-dfill="dOfficeName" data-dval="${o}">${o}</button>`
-    ).join("");
-    document.getElementById("dOfficeList").innerHTML = offices.map(o => `<option value="${o}">`).join("");
-
-    const desigs = this.getAlphabeticalList(AppStore.deliveries.map(d => d.Designation), CONFIG.DEFAULT_DESIGNATIONS);
-    document.getElementById("dDesigChips").innerHTML = desigs.slice(0, 6).map(d =>
-      `<button type="button" class="smart-chip" data-dfill="dDesignation" data-dval="${d}">${d}</button>`
-    ).join("");
-    document.getElementById("dDesigList").innerHTML = desigs.map(d => `<option value="${d}">`).join("");
-
-    const sections = this.getAlphabeticalList(AppStore.deliveries.map(d => d.Section), CONFIG.DEFAULT_SECTIONS);
-    document.getElementById("dSectionChips").innerHTML = sections.slice(0, 6).map(s =>
-      `<button type="button" class="smart-chip" data-dfill="dSection" data-dval="${s}">${s}</button>`
-    ).join("");
-    document.getElementById("dSectionList").innerHTML = sections.map(s => `<option value="${s}">`).join("");
-
-    const natures = this.getAlphabeticalList(AppStore.deliveries.map(d => d.Nature), CONFIG.DEFAULT_NATURES);
-    document.getElementById("dNatureChips").innerHTML = natures.map(n =>
-      `<button type="button" class="smart-chip" data-dnature-pick="${n}">${n}</button>`
-    ).join("");
-    document.getElementById("dNatureList").innerHTML = natures.map(n => `<option value="${n}">`).join("");
-
-    const savedPrefixes = [];
-    AppStore.deliveries.forEach(d => {
-      try {
-        JSON.parse(d.Items_JSON || "[]").forEach(it => {
-          const m = String(it.number || "").match(/^([A-Za-z]+\/(?:[A-Za-z0-9]+\/)?|[A-Za-z]+-)/);
-          if (m) savedPrefixes.push(m[1].toUpperCase());
-        });
-      } catch (e) {}
-    });
-    const patterns = this.getAlphabeticalList(savedPrefixes, CONFIG.DEFAULT_NO_PATTERNS);
-    document.getElementById("dPatternChips").innerHTML = patterns.map(p =>
-      `<button type="button" class="smart-chip" data-dpattern="${p}">${p}</button>`
-    ).join("");
-
-    document.getElementById("dNotDelivChips").innerHTML = CONFIG.DEFAULT_NOT_DELIVERED_REASONS.map(r =>
-      `<button type="button" class="smart-chip" data-dfill="dNotDelivReason" data-dval="${r}">${r}</button>`
-    ).join("");
-
-    document.getElementById("dReceiptNoChips").innerHTML = CONFIG.DEFAULT_RECEIPT_NO_REASONS.map(r =>
-      `<button type="button" class="smart-chip" data-dfill="dReceiptNoReason" data-dval="${r}">${r}</button>`
-    ).join("");
-
-    const receivers = AppStore.rankByFrequency([
-      ...AppStore.deliveries.map(d => d.Receiver_Name),
-      ...AppStore.batches.map(b => b.Received_By_Name)
-    ]).slice(0, 6);
-    document.getElementById("dReceiverChips").innerHTML = receivers.map((r, i) =>
-      `<button type="button" class="smart-chip ${i === 0 ? "top-rank" : ""}" data-dfill="dReceiverName" data-dval="${r}">${r}</button>`
-    ).join("");
-  },
-
-  // =========================================================
-  // SAVE STAGE 1, STAGE 2, AND SINGLE STAGE 3
+  // SAVE STAGES 1, 2 & 3
   // =========================================================
   async saveStage1() {
     const office = document.getElementById("dOfficeName").value.trim();
     if (!office) {
-      showToast("Please enter or select Office Name.");
+      showToast("Enter Office Name.");
+      document.getElementById("dOfficeName").focus();
       return;
     }
 
-    const t = this.currentTask;
-    t.Created_DateTime = document.getElementById("dCreatedDT").value || DateTimeHelper.nowLocalISO();
-    t.Office_Name = office;
-    t.Designation = document.getElementById("dDesignation").value.trim();
-    t.Section = document.getElementById("dSection").value.trim();
-    t.Nature = document.getElementById("dNature").value.trim() || "File";
-    t.Item_Count = Math.max(1, parseInt(document.getElementById("dItemCount").value || "1", 10));
-    t.Nature_Mode = t.Item_Count > 1 ? this.natureMode : "Same";
-    t.Items_JSON = JSON.stringify(this.itemsDraft);
-    t.Description = document.getElementById("dDescription").value.trim();
-    t.Has_Attachments = this.getToggle("dAttachToggleGroup") || "No";
-    t.Attachment_Count = t.Has_Attachments === "Yes" ? Math.max(1, parseInt(document.getElementById("dAttachCount").value || "1", 10)) : 0;
-    t.Attachments_JSON = t.Has_Attachments === "Yes" ? JSON.stringify(this.attachmentsDraft.filter(Boolean)) : "[]";
-    t.Items_Summary = this.buildItemsSummary(this.itemsDraft, t.Has_Attachments, t.Attachment_Count);
-    t.Planned_Delivery_DT = document.getElementById("dPlannedDT").value;
-    t.Urgency = this.getToggle("dUrgencyGroup") || "Normal";
+    const direction = this.getToggle("dDirectionGroup") || "Outward";
+    const nature = document.getElementById("dNature").value.trim() || "File";
+    const items = this.collectDynamicItems();
+    const hasAtt = this.getToggle("dAttachToggleGroup") || "No";
+    const atts = this.collectAttachments();
 
-    this.upsertLocalTask(t);
-    await AppStore.pushAction("saveDelivery", t);
-    showToast(`Task Added: ${t.Office_Name}`);
-    this.startNewTask(false);
-    this.switchSubView("tasks");
+    this.currentTask.Direction = direction;
+    this.currentTask.Created_DateTime = document.getElementById("dCreatedDT").value || DateTimeHelper.nowLocalISO();
+    this.currentTask.Office_Name = office;
+    this.currentTask.Designation = document.getElementById("dDesignation").value.trim();
+    this.currentTask.Section = document.getElementById("dSection").value.trim();
+    this.currentTask.Nature = nature;
+    this.currentTask.Item_Count = items.length;
+    this.currentTask.Nature_Mode = this.natureMode;
+    this.currentTask.Items_JSON = JSON.stringify(items);
+    this.currentTask.Items_Summary = this.formatItemsSummary(items, nature);
+    this.currentTask.Description = document.getElementById("dDescription").value.trim();
+    this.currentTask.Has_Attachments = hasAtt;
+    this.currentTask.Attachment_Count = hasAtt === "Yes" ? atts.length : 0;
+    this.currentTask.Attachments_JSON = JSON.stringify(atts);
+    this.currentTask.Planned_Delivery_DT = direction === "Outward" ? document.getElementById("dPlannedDT").value : "";
+    this.currentTask.Urgency = this.getToggle("dUrgencyGroup") || "Normal";
+
+    this.upsertLocalTask(this.currentTask);
+    this.updateStageSummaries();
+    await AppStore.pushAction("saveDelivery", this.currentTask);
+    showToast(`${direction === "Inward" ? "Inward Collection" : "Outward Task"} saved to Tasks ✓`);
+    this.collapseAllStages();
   },
 
   async saveStage2() {
-    const t = this.currentTask;
-    if (!t.Office_Name) {
-      showToast("Complete Stage 1 first.");
-      this.openStage(1);
-      return;
+    if (!this.currentTask.Office_Name) {
+      if (!document.getElementById("dOfficeName").value.trim()) {
+        showToast("Complete Stage 1 first.");
+        return;
+      }
+      await this.saveStage1();
     }
+
     const status = this.getToggle("dStatusGroup");
     if (!status) {
       showToast("Select Delivered or Not Delivered.");
       return;
     }
+
     const reason = document.getElementById("dNotDelivReason").value.trim();
     if (status === "Not Delivered" && !reason) {
       showToast("Enter reason why it was not delivered.");
@@ -376,358 +384,502 @@ const DeliveryModule = {
       return;
     }
 
-    t.Delivery_Status = status;
-    t.Not_Delivered_Reason = status === "Not Delivered" ? reason : "";
-    t.Completed_DateTime = document.getElementById("dCompletedDT").value || DateTimeHelper.nowLocalISO();
-    t.Stage2_Comments = document.getElementById("dStage2Comments").value.trim();
-
-    this.upsertLocalTask(t);
-    await AppStore.pushAction("saveDelivery", t);
-
-    if (status === "Delivered") {
-      showToast("Delivered ✓ Moved to Unreported Tasks");
-      this.switchSubView("unreported");
-    } else {
-      showToast("Saved as Not Delivered — kept in Tasks");
-      this.switchSubView("tasks");
+    const s2Receiver = document.getElementById("dStage2ReceiverName").value.trim();
+    if (status === "Delivered" && !s2Receiver) {
+      showToast("Enter Receiver's Name.");
+      document.getElementById("dStage2ReceiverName").focus();
+      return;
     }
-  },
 
-  updateStage3ConditionalFields(val, autoFillTime = true) {
-    document.getElementById("dReceiptNoBox").classList.toggle("hidden", val !== "No");
-    document.getElementById("dReceiptYesFields").classList.toggle("hidden", val !== "Yes");
-    if (val === "Yes" && autoFillTime) {
-      const repInp = document.getElementById("dReportedDT");
-      if (!repInp.value) {
-        repInp.value = DateTimeHelper.nowLocalISO();
-        repInp.max = repInp.value;
-      }
+    this.currentTask.Delivery_Status = status;
+    this.currentTask.Not_Delivered_Reason = status === "Not Delivered" ? reason : "";
+    this.currentTask.Completed_DateTime = document.getElementById("dCompletedDT").value || DateTimeHelper.nowLocalISO();
+    this.currentTask.Stage2_Receiver_Name = s2Receiver;
+    this.currentTask.Stage2_Comments = document.getElementById("dStage2Comments").value.trim();
+
+    this.upsertLocalTask(this.currentTask);
+    this.updateStageSummaries();
+    await AppStore.pushAction("saveDelivery", this.currentTask);
+
+    const isInward = (this.currentTask.Direction || "Outward") === "Inward";
+
+    if (status === "Delivered" && isInward) {
+      showToast("Inward Collection handed over & moved to History ✓");
+      this.collapseAllStages();
+      this.switchSubView("history");
+    } else if (status === "Delivered") {
+      showToast("Delivered ✓ Proceed to Stage 3 for receipt handover");
+      this.openStage(3);
+    } else {
+      showToast("Marked Not Delivered — remains in Tasks");
+      this.collapseAllStages();
     }
   },
 
   async saveStage3() {
-    const receiptGiven = this.getToggle("dReceiptGivenGroup");
-    if (!receiptGiven) {
+    const given = this.getToggle("dReceiptGivenGroup");
+    if (!given) {
       showToast("Select Yes or No for Receipt.");
       return;
     }
 
     const noReason = document.getElementById("dReceiptNoReason").value.trim();
     const receiver = document.getElementById("dReceiverName").value.trim();
-    const reportedDT = document.getElementById("dReportedDT").value || DateTimeHelper.nowLocalISO();
+    const repDT = document.getElementById("dReportedDT").value || DateTimeHelper.nowLocalISO();
 
-    if (receiptGiven === "No" && !noReason) {
+    if (given === "No" && !noReason) {
       showToast("Enter reason why receipt was not given.");
       document.getElementById("dReceiptNoReason").focus();
       return;
     }
-    if (receiptGiven === "Yes" && !receiver) {
+    if (given === "Yes" && !receiver) {
       showToast("Enter Receiver's Name.");
       document.getElementById("dReceiverName").focus();
       return;
     }
 
-    const t = this.currentTask;
-    t.Delivery_Status = "Delivered";
-    t.Receipt_Given = receiptGiven;
-    t.Receipt_No_Reason = receiptGiven === "No" ? noReason : "";
-    t.Receiver_Name = receiptGiven === "Yes" ? receiver : "";
-    t.Reported_DateTime = receiptGiven === "Yes" ? reportedDT : DateTimeHelper.nowLocalISO();
+    if (this.batchReportIds.length > 0) {
+      const updatedList = [];
+      this.batchReportIds.forEach(id => {
+        const t = AppStore.deliveries.find(x => String(x.Task_ID) === String(id));
+        if (t) {
+          t.Receipt_Given = given;
+          t.Receipt_No_Reason = given === "No" ? noReason : "";
+          t.Receiver_Name = given === "Yes" ? receiver : "";
+          t.Reported_DateTime = given === "Yes" ? repDT : DateTimeHelper.nowLocalISO();
+          updatedList.push({ ...t });
+        }
+      });
+      this.batchReportIds = [];
+      this.selectedUnrepIds.clear();
+      document.getElementById("dBatchReportBanner").classList.add("hidden");
+      await AppStore.pushAction("saveDeliveryBatch", updatedList);
+      showToast(`Reported ${updatedList.length} tasks → Moved to History ✓`);
+      this.collapseAllStages();
+      this.switchSubView("history");
+      return;
+    }
 
-    this.upsertLocalTask(t);
-    await AppStore.pushAction("saveDelivery", t);
+    if (this.currentTask.Delivery_Status !== "Delivered") {
+      showToast("Mark Stage 2 as Delivered first.");
+      this.openStage(2);
+      return;
+    }
 
-    showToast("Task reported & moved to History ✓");
-    this.startNewTask(false);
+    this.currentTask.Receipt_Given = given;
+    this.currentTask.Receipt_No_Reason = given === "No" ? noReason : "";
+    this.currentTask.Receiver_Name = given === "Yes" ? receiver : "";
+    this.currentTask.Reported_DateTime = given === "Yes" ? repDT : DateTimeHelper.nowLocalISO();
+
+    this.upsertLocalTask(this.currentTask);
+    this.updateStageSummaries();
+    await AppStore.pushAction("saveDelivery", this.currentTask);
+    showToast("Task Reported & Moved to History ✓");
+    this.collapseAllStages();
     this.switchSubView("history");
   },
 
   upsertLocalTask(taskObj) {
-    const idx = AppStore.deliveries.findIndex(x => String(x.Task_ID) === String(taskObj.Task_ID));
+    const idx = AppStore.deliveries.findIndex(t => String(t.Task_ID) === String(taskObj.Task_ID));
     if (idx !== -1) AppStore.deliveries[idx] = { ...taskObj };
     else AppStore.deliveries.unshift({ ...taskObj });
   },
 
-  updateStageSummaries() {
-    const t = this.currentTask;
-    document.getElementById("dSummary1").textContent = t.Office_Name
-      ? `${t.Office_Name} • ${t.Items_Summary || t.Nature}`
-      : "Create Delivery / Field Task";
-    document.getElementById("dCard1").classList.toggle("completed", Boolean(t.Office_Name));
-
-    document.getElementById("dSummary2").textContent = t.Delivery_Status
-      ? `${t.Delivery_Status} (${DateTimeHelper.formatShort(t.Completed_DateTime)})`
-      : "Delivery Status & Time";
-    document.getElementById("dCard2").classList.toggle("completed", t.Delivery_Status === "Delivered");
-
-    document.getElementById("dSummary3").textContent = t.Receipt_Given
-      ? `Receipt: ${t.Receipt_Given}${t.Receiver_Name ? " (" + t.Receiver_Name + ")" : ""}`
-      : "Receipt Handover & Receiver";
-    document.getElementById("dCard3").classList.toggle("completed", Boolean(t.Receipt_Given));
-  },
-
   // =========================================================
-  // RENDER TASKS LIST, UNREPORTED LIST & HISTORY
+  // GROUP STAGE 3 REPORTING MODAL (FOR OUTWARD TASKS)
   // =========================================================
-  refreshAllViews() {
-    this.refreshLearnedLists();
-
-    const activeTasks = AppStore.deliveries.filter(t => t.Delivery_Status !== "Delivered");
-    const unreportedTasks = AppStore.deliveries.filter(t => t.Delivery_Status === "Delivered" && !t.Receipt_Given);
-    const historyTasks = AppStore.deliveries.filter(t => t.Delivery_Status === "Delivered" && Boolean(t.Receipt_Given));
-
-    document.getElementById("dTasksCount").textContent = activeTasks.length;
-    document.getElementById("dUnrepCount").textContent = unreportedTasks.length;
-
-    this.renderActiveTasks(activeTasks);
-    this.renderUnreportedTasks(unreportedTasks);
-    this.populateHistoryFilterDropdowns(historyTasks);
-    this.renderHistoryTasks(historyTasks);
-  },
-
-  formatPlannedTime(iso) {
-    if (!iso) return "";
-    const d = new Date(iso);
-    if (isNaN(d.getTime())) return iso;
-    const today = new Date();
-    const isToday = d.toDateString() === today.toDateString();
-    const timeStr = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-    return isToday ? `Deliver before ${timeStr}` : `Deliver before ${d.toLocaleDateString([], { month: "short", day: "numeric" })} ${timeStr}`;
-  },
-
-  renderActiveTasks(list) {
-    let filtered = list;
-    if (this.activeUrgencyFilter !== "ALL") {
-      filtered = list.filter(t => (t.Urgency || "Normal") === this.activeUrgencyFilter);
+  openGroupReportModal() {
+    if (!this.selectedUnrepIds.size) {
+      showToast("Select at least 1 unreported task first.");
+      return;
     }
+    this.groupReportIds = [...this.selectedUnrepIds];
+    const selectedTasks = this.groupReportIds
+      .map(id => AppStore.deliveries.find(t => String(t.Task_ID) === String(id)))
+      .filter(Boolean);
 
-    const wrap = document.getElementById("dActiveTasksList");
-    if (!filtered.length) {
-      wrap.innerHTML = `<div class="card muted small">No pending tasks. Tap "+ New Task" in Entry to create one.</div>`;
+    const offices = [...new Set(selectedTasks.map(t => t.Office_Name).filter(Boolean))];
+    document.getElementById("groupReportSummary").innerHTML = `
+      <span class="som-strip-title">${selectedTasks.length} Task(s) Selected</span>
+      <span class="small muted">${offices.slice(0, 2).join(", ")}${offices.length > 2 ? "..." : ""}</span>
+    `;
+
+    this.setToggle("grpReceiptGivenGroup", "");
+    document.getElementById("grpReceiptNoBox").classList.add("hidden");
+    document.getElementById("grpReceiptYesFields").classList.add("hidden");
+    document.getElementById("grpReceiptNoReason").value = "";
+    document.getElementById("grpReceiverName").value = "";
+    const dtInp = document.getElementById("grpReportedDT");
+    dtInp.value = DateTimeHelper.nowLocalISO();
+    dtInp.max = dtInp.value;
+
+    const noReasons = AppStore.rankByFrequency(
+      AppStore.deliveries.map(t => t.Receipt_No_Reason),
+      CONFIG.DEFAULT_RECEIPT_NO_REASONS
+    ).slice(0, 5);
+    document.getElementById("grpReceiptNoChips").innerHTML = noReasons.map(r =>
+      `<button type="button" class="smart-chip" data-grpfill="grpReceiptNoReason" data-grpval="${r}">${r}</button>`
+    ).join("");
+
+    const receivers = AppStore.rankByFrequency(AppStore.deliveries.map(t => t.Receiver_Name)).slice(0, 6);
+    document.getElementById("grpReceiverChips").innerHTML = receivers.map((n, i) =>
+      `<button type="button" class="smart-chip ${i === 0 ? "top-rank" : ""}" data-grpfill="grpReceiverName" data-grpval="${n}">${n}</button>`
+    ).join("");
+
+    document.getElementById("groupReportModal").classList.remove("hidden");
+  },
+
+  async saveGroupReport() {
+    const given = this.getToggle("grpReceiptGivenGroup");
+    if (!given) {
+      showToast("Select Yes or No for Receipt.");
       return;
     }
 
-    wrap.innerHTML = filtered.map((t, idx) => {
-      const urg = t.Urgency || "Normal";
-      const urgClass = urg === "Very Urgent" ? "very-urgent" : (urg === "Urgent" ? "urgent" : "normal");
-      const planText = this.formatPlannedTime(t.Planned_Delivery_DT);
-      let itemNums = "";
+    const noReason = document.getElementById("grpReceiptNoReason").value.trim();
+    const receiver = document.getElementById("grpReceiverName").value.trim();
+    const repDT = document.getElementById("grpReportedDT").value || DateTimeHelper.nowLocalISO();
+
+    if (given === "No" && !noReason) {
+      showToast("Enter reason why receipt was not given.");
+      document.getElementById("grpReceiptNoReason").focus();
+      return;
+    }
+    if (given === "Yes" && !receiver) {
+      showToast("Enter Receiver's Name.");
+      document.getElementById("grpReceiverName").focus();
+      return;
+    }
+
+    const updatedList = [];
+    this.groupReportIds.forEach(id => {
+      const t = AppStore.deliveries.find(x => String(x.Task_ID) === String(id));
+      if (t) {
+        t.Receipt_Given = given;
+        t.Receipt_No_Reason = given === "No" ? noReason : "";
+        t.Receiver_Name = given === "Yes" ? receiver : "";
+        t.Reported_DateTime = given === "Yes" ? repDT : DateTimeHelper.nowLocalISO();
+        updatedList.push({ ...t });
+      }
+    });
+
+    this.groupReportIds = [];
+    this.selectedUnrepIds.clear();
+    document.getElementById("groupReportModal").classList.add("hidden");
+
+    await AppStore.pushAction("saveDeliveryBatch", updatedList);
+    showToast(`Reported ${updatedList.length} tasks → Moved to History ✓`);
+    this.renderUnreportedTasks();
+    this.switchSubView("history");
+  },
+
+  // =========================================================
+  // SUMMARIES & LEARNED OPTIONS
+  // =========================================================
+  updateStageSummaries() {
+    const t = this.currentTask;
+    const isInward = (t.Direction || "Outward") === "Inward";
+    const s1Done = Boolean(t.Office_Name && t.Created_DateTime);
+
+    document.getElementById("dSummary1").textContent = s1Done
+      ? `${isInward ? "From" : "To"} ${t.Office_Name} • ${t.Items_Summary || t.Nature} [${t.Urgency}]`
+      : (isInward ? "Record Collection Details" : "Create Delivery Task");
+    document.getElementById("dCard1").classList.toggle("completed", s1Done);
+
+    const s2Done = t.Delivery_Status === "Delivered";
+    document.getElementById("dSummary2").textContent = t.Delivery_Status
+      ? `${t.Delivery_Status}${t.Stage2_Receiver_Name ? " → " + t.Stage2_Receiver_Name : ""} (${DateTimeHelper.formatShort(t.Completed_DateTime)})`
+      : "Delivery Status, Receiver & Time";
+    document.getElementById("dCard2").classList.toggle("completed", s2Done);
+
+    const s3Done = Boolean(t.Receipt_Given);
+    document.getElementById("dSummary3").textContent = s3Done
+      ? `Receipt: ${t.Receipt_Given}${t.Receiver_Name ? " (" + t.Receiver_Name + ")" : ""}`
+      : "Receipt Handover & Receiver";
+    document.getElementById("dCard3").classList.toggle("completed", s3Done);
+  },
+
+  refreshLearnedOptions() {
+    const offices = AppStore.rankByFrequency(AppStore.deliveries.map(t => t.Office_Name), CONFIG.DEFAULT_OFFICES);
+    const desigs = AppStore.rankByFrequency(AppStore.deliveries.map(t => t.Designation), CONFIG.DEFAULT_DESIGNATIONS);
+    const sections = AppStore.rankByFrequency(AppStore.deliveries.map(t => t.Section), CONFIG.DEFAULT_SECTIONS);
+    const natures = AppStore.rankByFrequency(AppStore.deliveries.map(t => t.Nature), CONFIG.DEFAULT_NATURES);
+
+    document.getElementById("dOfficeList").innerHTML = offices.map(v => `<option value="${v}">`).join("");
+    document.getElementById("dDesigList").innerHTML = desigs.map(v => `<option value="${v}">`).join("");
+    document.getElementById("dSectionList").innerHTML = sections.map(v => `<option value="${v}">`).join("");
+    document.getElementById("dNatureList").innerHTML = natures.map(v => `<option value="${v}">`).join("");
+
+    document.getElementById("dOfficeChips").innerHTML = offices.slice(0, 5).map(v =>
+      `<button type="button" class="smart-chip" data-dfill="dOfficeName" data-dval="${v}">${v}</button>`
+    ).join("");
+    document.getElementById("dDesigChips").innerHTML = desigs.slice(0, 5).map(v =>
+      `<button type="button" class="smart-chip" data-dfill="dDesignation" data-dval="${v}">${v}</button>`
+    ).join("");
+    document.getElementById("dSectionChips").innerHTML = sections.slice(0, 5).map(v =>
+      `<button type="button" class="smart-chip" data-dfill="dSection" data-dval="${v}">${v}</button>`
+    ).join("");
+    document.getElementById("dNatureChips").innerHTML = natures.slice(0, 6).map(v =>
+      `<button type="button" class="smart-chip" data-dfill="dNature" data-dval="${v}">${v}</button>`
+    ).join("");
+
+    // Learned File Number Prefix Patterns
+    const prefixes = [];
+    AppStore.deliveries.forEach(t => {
       try {
-        itemNums = JSON.parse(t.Items_JSON || "[]").map(x => x.number).filter(Boolean).join(", ");
+        JSON.parse(t.Items_JSON || "[]").forEach(it => {
+          const m = String(it.number || "").match(/^([A-Za-z0-9\-/]+\/)\d+/);
+          if (m) prefixes.push(m[1]);
+        });
       } catch (e) {}
+    });
+    const topPatterns = AppStore.rankByFrequency(prefixes).slice(0, 4);
+    document.getElementById("dPatternChips").innerHTML = topPatterns.map(p =>
+      `<button type="button" class="smart-chip" data-dpattern="${p}">+ ${p}...</button>`
+    ).join("");
+
+    const notDelivReasons = AppStore.rankByFrequency(AppStore.deliveries.map(t => t.Not_Delivered_Reason), CONFIG.DEFAULT_NOT_DELIVERED_REASONS).slice(0, 5);
+    document.getElementById("dNotDelivChips").innerHTML = notDelivReasons.map(r =>
+      `<button type="button" class="smart-chip" data-dfill="dNotDelivReason" data-dval="${r}">${r}</button>`
+    ).join("");
+
+    // Stage 2 Receiver chips (separated by Outward external receivers vs Inward our-office staff)
+    const isInward = (this.currentTask && (this.currentTask.Direction || "Outward") === "Inward");
+    const s2Pool = AppStore.deliveries
+      .filter(t => (t.Direction || "Outward") === (isInward ? "Inward" : "Outward"))
+      .map(t => t.Stage2_Receiver_Name);
+    const fallbackStaff = isInward ? AppStore.deliveries.map(t => t.Receiver_Name) : [];
+    const s2Receivers = AppStore.rankByFrequency([...s2Pool, ...fallbackStaff]).slice(0, 6);
+    document.getElementById("dStage2ReceiverChips").innerHTML = s2Receivers.map((n, i) =>
+      `<button type="button" class="smart-chip ${i === 0 ? "top-rank" : ""}" data-dfill="dStage2ReceiverName" data-dval="${n}">${n}</button>`
+    ).join("");
+
+    const recNoReasons = AppStore.rankByFrequency(AppStore.deliveries.map(t => t.Receipt_No_Reason), CONFIG.DEFAULT_RECEIPT_NO_REASONS).slice(0, 5);
+    document.getElementById("dReceiptNoChips").innerHTML = recNoReasons.map(r =>
+      `<button type="button" class="smart-chip" data-dfill="dReceiptNoReason" data-dval="${r}">${r}</button>`
+    ).join("");
+
+    const receivers = AppStore.rankByFrequency(AppStore.deliveries.map(t => t.Receiver_Name)).slice(0, 6);
+    document.getElementById("dReceiverChips").innerHTML = receivers.map((n, i) =>
+      `<button type="button" class="smart-chip ${i === 0 ? "top-rank" : ""}" data-dfill="dReceiverName" data-dval="${n}">${n}</button>`
+    ).join("");
+  },
+
+  // =========================================================
+  // TASKS, UNREPORTED & HISTORY LISTS
+  // =========================================================
+  urgencyWeight(u) {
+    if (u === "Very Urgent") return 3;
+    if (u === "Urgent") return 2;
+    return 1;
+  },
+
+  renderActiveTasks() {
+    let active = AppStore.deliveries.filter(t => t.Delivery_Status !== "Delivered");
+    document.getElementById("dTasksCount").textContent = active.length;
+
+    if (this.urgencyFilter === "OUTWARD") {
+      active = active.filter(t => (t.Direction || "Outward") === "Outward");
+    } else if (this.urgencyFilter === "INWARD") {
+      active = active.filter(t => (t.Direction || "Outward") === "Inward");
+    } else if (this.urgencyFilter !== "ALL") {
+      active = active.filter(t => t.Urgency === this.urgencyFilter);
+    }
+
+    active.sort((a, b) => {
+      const uw = this.urgencyWeight(b.Urgency) - this.urgencyWeight(a.Urgency);
+      if (uw !== 0) return uw;
+      return String(a.Planned_Delivery_DT || a.Created_DateTime).localeCompare(String(b.Planned_Delivery_DT || b.Created_DateTime));
+    });
+
+    const wrap = document.getElementById("dActiveTasksList");
+    if (!active.length) {
+      wrap.innerHTML = `<div class="card muted small">No pending tasks.</div>`;
+      return;
+    }
+
+    wrap.innerHTML = active.map(t => {
+      const isInward = (t.Direction || "Outward") === "Inward";
+      const uClass = t.Urgency === "Very Urgent" ? "urg-very" : t.Urgency === "Urgent" ? "urg-urgent" : "urg-normal";
+      const cardClass = t.Urgency === "Very Urgent" ? "very-urgent" : t.Urgency === "Urgent" ? "urgent" : "";
+      const dirBadge = isInward
+        ? `<span class="badge" style="background:#ccfbf1; color:#0f766e;">📥 Inward</span>`
+        : `<span class="badge primary">📤 Outward</span>`;
 
       return `
-        <div class="task-tile ${urgClass}" data-open-stage2="${t.Task_ID}">
+        <div class="history-item ${cardClass}">
           <div class="row-between">
-            <strong>${idx + 1}. ${t.Office_Name} — ${t.Items_Summary || t.Nature}</strong>
-            <div class="row-gap" onclick="event.stopPropagation()">
-              <button type="button" class="btn-mini" data-move-task="${t.Task_ID}" data-dir="-1" title="Move Up">▲</button>
-              <button type="button" class="btn-mini" data-move-task="${t.Task_ID}" data-dir="1" title="Move Down">▼</button>
+            <div>
+              ${dirBadge}
+              <strong style="margin-left:4px;">${t.Office_Name}</strong>
             </div>
+            <span class="urgency-badge ${uClass}">${t.Urgency}</span>
           </div>
-          <div class="row-gap mt-6" style="flex-wrap:wrap;">
-            <span class="urg-badge ${urgClass}">${urg}</span>
-            ${planText ? `<span class="small" style="font-weight:600; color:#0f4c81;">⏰ ${planText}</span>` : ""}
-            ${t.Delivery_Status === "Not Delivered" ? `<span class="exception-pill">⚠️ Not Delivered: ${t.Not_Delivered_Reason}</span>` : ""}
-          </div>
+          <div class="small mt-6">${t.Items_Summary || t.Nature}${t.Section ? " • Sec: " + t.Section : ""}</div>
+          ${t.Description ? `<div class="small muted mt-6">${t.Description}</div>` : ""}
           <div class="small muted mt-6">
-            ${[t.Section ? "Sec: " + t.Section : "", itemNums ? "No: " + itemNums : "", t.Description].filter(Boolean).join(" • ")}
+            ${isInward
+              ? `Collected: ${DateTimeHelper.formatShort(t.Created_DateTime)} (Awaiting handover to our office)`
+              : (t.Planned_Delivery_DT ? `Planned: ${DateTimeHelper.formatShort(t.Planned_Delivery_DT)}` : `Created: ${DateTimeHelper.formatShort(t.Created_DateTime)}`)}
+          </div>
+          ${t.Delivery_Status === "Not Delivered" ? `<div class="exception-pill">Not Delivered: ${t.Not_Delivered_Reason}</div>` : ""}
+          <div class="row-between mt-8">
+            <button type="button" class="btn-mini" data-load-dtask="${t.Task_ID}" data-dopen-stage="1">Edit</button>
+            <button type="button" class="btn-mini accent" data-load-dtask="${t.Task_ID}" data-dopen-stage="2">
+              ${isInward ? "Hand Over to Office →" : "Update Delivery →"}
+            </button>
           </div>
         </div>`;
     }).join("");
   },
 
-  renderUnreportedTasks(list) {
-    const validIds = new Set(list.map(t => String(t.Task_ID)));
-    for (const id of Array.from(this.selectedUnrepIds)) {
-      if (!validIds.has(String(id))) this.selectedUnrepIds.delete(id);
+  renderUnreportedTasks() {
+    // Only Outward delivered tasks require Stage 3 receipt handover
+    const unrep = AppStore.deliveries.filter(t =>
+      (t.Direction || "Outward") === "Outward" &&
+      t.Delivery_Status === "Delivered" &&
+      !t.Receipt_Given
+    );
+    document.getElementById("dUnrepCount").textContent = unrep.length;
+    document.getElementById("dSelectedUnrepCount").textContent = this.selectedUnrepIds.size;
+
+    const wrap = document.getElementById("dUnreportedTasksList");
+    if (!unrep.length) {
+      wrap.innerHTML = `<div class="card muted small">All delivered outward tasks have been reported.</div>`;
+      return;
     }
 
-    document.getElementById("dSelectedUnrepCount").textContent = this.selectedUnrepIds.size;
-    const wrap = document.getElementById("dUnreportedTasksList");
+    wrap.innerHTML = unrep.map(t => {
+      const checked = this.selectedUnrepIds.has(t.Task_ID);
+      return `
+        <div class="history-item ${checked ? "checked" : ""}">
+          <div class="row-between">
+            <label class="row-gap" style="margin:0; cursor:pointer; flex:1;">
+              <input type="checkbox" data-unrep-chk="${t.Task_ID}" ${checked ? "checked" : ""} style="width:18px; height:18px;" />
+              <strong>${t.Office_Name}</strong>
+            </label>
+            <button type="button" class="btn-mini accent" data-load-dtask="${t.Task_ID}" data-dopen-stage="3">Report →</button>
+          </div>
+          <div class="small mt-6">${t.Items_Summary || t.Nature}${t.Stage2_Receiver_Name ? ` • Received by: <strong>${t.Stage2_Receiver_Name}</strong>` : ""}</div>
+          <div class="small muted mt-6">Delivered: ${DateTimeHelper.formatShort(t.Completed_DateTime)}</div>
+        </div>`;
+    }).join("");
+  },
+
+  renderHistory() {
+    const completed = AppStore.deliveries.filter(t => this.isCompletedLifecycle(t));
+
+    this.populateSelectFilter("dHistoryFilterOffice", completed.map(t => t.Office_Name), "Office: All");
+    this.populateSelectFilter("dHistoryFilterNature", completed.map(t => t.Nature), "Nature: All");
+    this.populateSelectFilter("dHistoryFilterDesig", completed.map(t => t.Designation), "Designation: All");
+    const allReceivers = completed.flatMap(t => [t.Stage2_Receiver_Name, t.Receiver_Name]).filter(Boolean);
+    this.populateSelectFilter("dHistoryFilterReceiver", allReceivers, "Receiver: All");
+
+    const q = document.getElementById("dHistorySearch").value.trim().toLowerCase();
+    const sortBy = document.getElementById("dHistorySort").value;
+    const fDir = document.getElementById("dHistoryFilterDirection").value;
+    const fStatus = document.getElementById("dHistoryFilterStatus").value;
+    const fOffice = document.getElementById("dHistoryFilterOffice").value;
+    const fNature = document.getElementById("dHistoryFilterNature").value;
+    const fDesig = document.getElementById("dHistoryFilterDesig").value;
+    const fReceiver = document.getElementById("dHistoryFilterReceiver").value;
+    const dFrom = document.getElementById("dHistoryDateFrom").value;
+    const dTo = document.getElementById("dHistoryDateTo").value;
+
+    let list = [...completed];
+    if (fDir !== "ALL") list = list.filter(t => (t.Direction || "Outward") === fDir);
+    if (fStatus === "GIVEN") list = list.filter(t => t.Receipt_Given === "Yes");
+    if (fStatus === "NOT_GIVEN") list = list.filter(t => t.Receipt_Given === "No");
+    if (fOffice !== "ALL") list = list.filter(t => t.Office_Name === fOffice);
+    if (fNature !== "ALL") list = list.filter(t => t.Nature === fNature);
+    if (fDesig !== "ALL") list = list.filter(t => t.Designation === fDesig);
+    if (fReceiver !== "ALL") list = list.filter(t => t.Stage2_Receiver_Name === fReceiver || t.Receiver_Name === fReceiver);
+    if (dFrom) list = list.filter(t => (t.Completed_DateTime || "").slice(0, 10) >= dFrom);
+    if (dTo) list = list.filter(t => (t.Completed_DateTime || "").slice(0, 10) <= dTo);
+
+    if (q) {
+      list = list.filter(t => [
+        t.Office_Name, t.Designation, t.Section, t.Nature, t.Items_Summary,
+        t.Description, t.Stage2_Comments, t.Stage2_Receiver_Name, t.Receiver_Name, t.Receipt_No_Reason
+      ].filter(Boolean).join(" ").toLowerCase().includes(q));
+    }
+
+    if (sortBy === "OLDEST") list.sort((a, b) => String(a.Completed_DateTime).localeCompare(String(b.Completed_DateTime)));
+    else if (sortBy === "OFFICE") list.sort((a, b) => String(a.Office_Name).localeCompare(String(b.Office_Name)));
+    else if (sortBy === "NATURE") list.sort((a, b) => String(a.Nature).localeCompare(String(b.Nature)));
+    else list.sort((a, b) => String(b.Completed_DateTime).localeCompare(String(a.Completed_DateTime)));
+
+    document.getElementById("dHistoryCountLabel").textContent = `${list.length} completed record(s)`;
+    const wrap = document.getElementById("dHistoryList");
     if (!list.length) {
-      wrap.innerHTML = `<div class="card muted small">No unreported tasks. Delivered tasks appear here automatically.</div>`;
+      wrap.innerHTML = `<div class="card muted small">No matching completed records.</div>`;
       return;
     }
 
     wrap.innerHTML = list.map(t => {
-      const checked = this.selectedUnrepIds.has(String(t.Task_ID));
+      const isInward = (t.Direction || "Outward") === "Inward";
+      const dirBadge = isInward
+        ? `<span class="badge" style="background:#ccfbf1; color:#0f766e;">📥 Collected</span>`
+        : `<span class="badge ${t.Receipt_Given === "Yes" ? "online" : "offline"}">📤 ${t.Receipt_Given === "Yes" ? "Receipt: Yes" : "No Receipt"}</span>`;
+
       return `
-        <div class="task-tile" style="border-left:4px solid var(--success); ${checked ? "background:#f0fdf4;" : ""}">
+        <div class="history-item">
           <div class="row-between">
-            <label class="row-gap" style="margin:0; cursor:pointer; flex:1;" onclick="event.stopPropagation()">
-              <input type="checkbox" data-unrep-check="${t.Task_ID}" ${checked ? "checked" : ""} style="width:19px; height:19px;" />
-              <span>✓ <strong>${t.Office_Name}</strong> — ${t.Items_Summary || t.Nature}</span>
-            </label>
-            <button type="button" class="btn-mini accent" data-open-stage3="${t.Task_ID}">Report →</button>
+            <strong>${t.Office_Name}</strong>
+            <div class="row-gap">
+              ${dirBadge}
+              <button type="button" class="btn-mini accent" data-inspect-dtask="${t.Task_ID}">View</button>
+            </div>
           </div>
-          <div class="small muted mt-6">Delivered: ${DateTimeHelper.formatShort(t.Completed_DateTime)} ${t.Stage2_Comments ? "• " + t.Stage2_Comments : ""}</div>
+          <div class="small mt-6">${t.Items_Summary || t.Nature}${t.Section ? " • " + t.Section : ""}</div>
+          <div class="small muted mt-6">
+            ${isInward
+              ? `Collected: ${DateTimeHelper.formatShort(t.Created_DateTime)} • Handed over: ${DateTimeHelper.formatShort(t.Completed_DateTime)} → <strong>${t.Stage2_Receiver_Name || "—"}</strong>`
+              : `Delivered: ${DateTimeHelper.formatShort(t.Completed_DateTime)}${t.Stage2_Receiver_Name ? ` → <strong>${t.Stage2_Receiver_Name}</strong>` : ""}${t.Receiver_Name ? ` • Receipt to: <strong>${t.Receiver_Name}</strong>` : ""}`}
+          </div>
         </div>`;
     }).join("");
   },
 
-  // =========================================================
-  // HISTORY FILTER DROPDOWNS, SORTING & READ-ONLY REPORT MODAL
-  // =========================================================
-  populateHistoryFilterDropdowns(historyList) {
-    const syncSelect = (selectId, labelPrefix, values) => {
-      const sel = document.getElementById(selectId);
-      if (!sel) return;
-      const currentVal = sel.value;
-      const uniqueSorted = this.getAlphabeticalList(values, []);
-      sel.innerHTML = `<option value="ALL">${labelPrefix}: All</option>` +
-        uniqueSorted.map(v => `<option value="${v}">${v}</option>`).join("");
-      if (uniqueSorted.includes(currentVal)) sel.value = currentVal;
-    };
-
-    syncSelect("dHistoryFilterOffice", "Office", historyList.map(t => t.Office_Name));
-
-    const allNatures = [];
-    historyList.forEach(t => {
-      if (t.Nature) allNatures.push(t.Nature);
-      try {
-        JSON.parse(t.Items_JSON || "[]").forEach(it => { if (it.nature) allNatures.push(it.nature); });
-      } catch (e) {}
-    });
-    syncSelect("dHistoryFilterNature", "Nature", allNatures);
-    syncSelect("dHistoryFilterDesig", "Designation", historyList.map(t => t.Designation));
-    syncSelect("dHistoryFilterReceiver", "Receiver", historyList.map(t => t.Receiver_Name));
+  populateSelectFilter(selectId, rawValues, defaultLabel) {
+    const sel = document.getElementById(selectId);
+    const current = sel.value;
+    const unique = [...new Set(rawValues.filter(Boolean))].sort();
+    sel.innerHTML = `<option value="ALL">${defaultLabel}</option>` + unique.map(v => `<option value="${v}">${v}</option>`).join("");
+    if (unique.includes(current)) sel.value = current;
   },
 
-  renderHistoryTasks(list) {
-    const q = document.getElementById("dHistorySearch").value.trim().toLowerCase();
-    const statusFilter = document.getElementById("dHistoryFilterStatus").value;
-    const officeFilter = document.getElementById("dHistoryFilterOffice").value;
-    const natureFilter = document.getElementById("dHistoryFilterNature").value;
-    const desigFilter = document.getElementById("dHistoryFilterDesig").value;
-    const receiverFilter = document.getElementById("dHistoryFilterReceiver").value;
-    const dateFrom = document.getElementById("dHistoryDateFrom").value;
-    const dateTo = document.getElementById("dHistoryDateTo").value;
-    const sortBy = document.getElementById("dHistorySort").value;
-
-    let filtered = [...list];
-
-    if (statusFilter === "GIVEN") filtered = filtered.filter(t => t.Receipt_Given === "Yes");
-    if (statusFilter === "NOT_GIVEN") filtered = filtered.filter(t => t.Receipt_Given === "No");
-    if (officeFilter !== "ALL") filtered = filtered.filter(t => String(t.Office_Name).trim() === officeFilter);
-    if (desigFilter !== "ALL") filtered = filtered.filter(t => String(t.Designation).trim() === desigFilter);
-    if (receiverFilter !== "ALL") filtered = filtered.filter(t => String(t.Receiver_Name).trim() === receiverFilter);
-
-    if (natureFilter !== "ALL") {
-      filtered = filtered.filter(t => {
-        if (String(t.Nature).trim() === natureFilter) return true;
-        try {
-          return JSON.parse(t.Items_JSON || "[]").some(it => String(it.nature).trim() === natureFilter);
-        } catch (e) {
-          return false;
-        }
-      });
-    }
-
-    if (dateFrom) {
-      filtered = filtered.filter(t => {
-        const dStr = String(t.Reported_DateTime || t.Completed_DateTime || t.Created_DateTime || "").slice(0, 10);
-        return dStr && dStr >= dateFrom;
-      });
-    }
-    if (dateTo) {
-      filtered = filtered.filter(t => {
-        const dStr = String(t.Reported_DateTime || t.Completed_DateTime || t.Created_DateTime || "").slice(0, 10);
-        return dStr && dStr <= dateTo;
-      });
-    }
-
-    if (q) {
-      filtered = filtered.filter(t =>
-        [t.Office_Name, t.Designation, t.Items_Summary, t.Items_JSON, t.Section, t.Receiver_Name, t.Description, t.Stage2_Comments]
-          .filter(Boolean).join(" ").toLowerCase().includes(q)
-      );
-    }
-
-    if (sortBy === "OLDEST") {
-      filtered.sort((a, b) => String(a.Reported_DateTime || a.Completed_DateTime).localeCompare(String(b.Reported_DateTime || b.Completed_DateTime)));
-    } else if (sortBy === "OFFICE") {
-      filtered.sort((a, b) => String(a.Office_Name).localeCompare(String(b.Office_Name)));
-    } else if (sortBy === "NATURE") {
-      filtered.sort((a, b) => String(a.Nature).localeCompare(String(b.Nature)));
-    } else {
-      filtered.sort((a, b) => String(b.Reported_DateTime || b.Completed_DateTime).localeCompare(String(a.Reported_DateTime || a.Completed_DateTime)));
-    }
-
-    document.getElementById("dHistoryCountLabel").textContent = `${filtered.length} completed record(s)`;
-    const wrap = document.getElementById("dHistoryList");
-    if (!filtered.length) {
-      wrap.innerHTML = `<div class="card muted small">No completed history records match your filters.</div>`;
-      return;
-    }
-
-    wrap.innerHTML = filtered.slice(0, 50).map(t => `
-      <div class="history-item">
-        <div class="row-between">
-          <strong>${t.Office_Name} — ${t.Items_Summary || t.Nature}</strong>
-          <button type="button" class="btn-mini accent" data-view-report="${t.Task_ID}">Report</button>
-        </div>
-        <div class="small muted">
-          ${[t.Designation, t.Section ? "Sec: " + t.Section : "", "Delivered: " + DateTimeHelper.formatShort(t.Completed_DateTime)].filter(Boolean).join(" • ")}
-        </div>
-        <div class="small mt-6">
-          ${t.Receipt_Given === "Yes"
-            ? `Receipt Given to <strong>${t.Receiver_Name}</strong> (${DateTimeHelper.formatShort(t.Reported_DateTime)})`
-            : `<span class="exception-pill">No Receipt: ${t.Receipt_No_Reason}</span>`}
-        </div>
-      </div>
-    `).join("");
-  },
-
-  openReadOnlyReportModal(taskId) {
+  // =========================================================
+  // READ-ONLY REPORT MODAL & EDIT WARNING
+  // =========================================================
+  openReportModal(taskId) {
     const t = AppStore.deliveries.find(x => String(x.Task_ID) === String(taskId));
     if (!t) return;
-    this.viewingReportTaskId = t.Task_ID;
+    this.inspectingTaskId = taskId;
+    const isInward = (t.Direction || "Outward") === "Inward";
 
-    let itemsHtml = "";
-    try {
-      const parsed = JSON.parse(t.Items_JSON || "[]");
-      if (parsed.length) {
-        itemsHtml = parsed.map((it, idx) =>
-          `<div>• Item #${idx + 1}: <strong>${it.nature}</strong> ${it.number ? "(" + it.number + ")" : ""}</div>`
-        ).join("");
-      }
-    } catch (e) {}
-
-    let attachHtml = "";
-    try {
-      const att = JSON.parse(t.Attachments_JSON || "[]");
-      if (att.length) {
-        attachHtml = `<div><strong>Attachments (${att.length}):</strong> ${att.join(", ")}</div>`;
-      }
-    } catch (e) {}
+    let atts = [];
+    try { atts = JSON.parse(t.Attachments_JSON || "[]"); } catch (e) {}
 
     document.getElementById("deliveryReportBody").innerHTML = `
-      <div class="card" style="background:#f8fafc; margin-bottom:8px;">
-        <div class="micro-label">STAGE 1 • TASK DETAILS</div>
-        <div><strong>Office:</strong> ${t.Office_Name}</div>
-        ${t.Designation ? `<div><strong>Designation:</strong> ${t.Designation}</div>` : ""}
-        ${t.Section ? `<div><strong>Section:</strong> ${t.Section}</div>` : ""}
-        <div><strong>Summary:</strong> ${t.Items_Summary || t.Nature}</div>
-        ${itemsHtml}
-        ${attachHtml}
-        ${t.Description ? `<div><strong>Description:</strong> ${t.Description}</div>` : ""}
-        <div class="small muted mt-6">Created: ${DateTimeHelper.formatShort(t.Created_DateTime)} ${t.Planned_Delivery_DT ? "• Planned: " + DateTimeHelper.formatShort(t.Planned_Delivery_DT) : ""}</div>
-      </div>
-
-      <div class="card" style="background:#f8fafc; margin-bottom:8px;">
-        <div class="micro-label">STAGE 2 • DELIVERY COMPLETION</div>
-        <div><strong>Status:</strong> ${t.Delivery_Status}</div>
-        <div><strong>Delivered Time:</strong> ${DateTimeHelper.formatShort(t.Completed_DateTime)}</div>
-        ${t.Stage2_Comments ? `<div><strong>Comments:</strong> ${t.Stage2_Comments}</div>` : ""}
-      </div>
-
-      <div class="card" style="background:#f8fafc; margin-bottom:0;">
-        <div class="micro-label">STAGE 3 • RECEIPT REPORTING</div>
-        <div><strong>Receipt Given:</strong> ${t.Receipt_Given}</div>
-        ${t.Receipt_Given === "Yes"
-          ? `<div><strong>Received By:</strong> ${t.Receiver_Name}</div><div><strong>Received Time:</strong> ${DateTimeHelper.formatShort(t.Reported_DateTime)}</div>`
-          : `<div class="danger-text"><strong>No Reason:</strong> ${t.Receipt_No_Reason}</div>`}
+      <div class="report-grid">
+        <div class="report-row"><span class="report-lbl">Direction</span><span class="report-val">${isInward ? "📥 Inward (Collection to Our Office)" : "📤 Outward (Delivery to External Office)"}</span></div>
+        <div class="report-row"><span class="report-lbl">${isInward ? "From Office" : "To Office"}</span><span class="report-val">${t.Office_Name}</span></div>
+        <div class="report-row"><span class="report-lbl">Designation</span><span class="report-val">${t.Designation || "—"}</span></div>
+        <div class="report-row"><span class="report-lbl">${isInward ? "Receiving Section" : "Section"}</span><span class="report-val">${t.Section || "—"}</span></div>
+        <div class="report-row"><span class="report-lbl">Items (${t.Item_Count})</span><span class="report-val">${t.Items_Summary || t.Nature}</span></div>
+        <div class="report-row"><span class="report-lbl">Description</span><span class="report-val">${t.Description || "—"}</span></div>
+        <div class="report-row"><span class="report-lbl">Attachments</span><span class="report-val">${t.Has_Attachments === "Yes" ? atts.map(a => `${a.nature} ${a.number}`).join(", ") : "None"}</span></div>
+        <div class="report-row"><span class="report-lbl">Urgency</span><span class="report-val">${t.Urgency}</span></div>
+        <div class="report-row"><span class="report-lbl">${isInward ? "Collected Time" : "Created Time"}</span><span class="report-val">${DateTimeHelper.formatShort(t.Created_DateTime)}</span></div>
+        <div class="report-row"><span class="report-lbl">${isInward ? "Handed Over Time" : "Delivered Time"}</span><span class="report-val">${DateTimeHelper.formatShort(t.Completed_DateTime)}</span></div>
+        <div class="report-row"><span class="report-lbl">Receiver's Name</span><span class="report-val">${t.Stage2_Receiver_Name || "—"}</span></div>
+        <div class="report-row"><span class="report-lbl">Comments</span><span class="report-val">${t.Stage2_Comments || "—"}</span></div>
+        ${!isInward ? `
+          <div class="report-row"><span class="report-lbl">Receipt Given</span><span class="report-val">${t.Receipt_Given} ${t.Receipt_No_Reason ? "(" + t.Receipt_No_Reason + ")" : ""}</span></div>
+          <div class="report-row"><span class="report-lbl">Receipt Receiver</span><span class="report-val">${t.Receiver_Name || "—"}</span></div>
+          <div class="report-row"><span class="report-lbl">Reported Time</span><span class="report-val">${DateTimeHelper.formatShort(t.Reported_DateTime)}</span></div>
+        ` : ""}
       </div>
     `;
 
@@ -754,21 +906,11 @@ const DeliveryModule = {
       hdr.addEventListener("click", () => {
         const n = parseInt(hdr.dataset.dstage, 10);
         const body = document.getElementById(`dBody${n}`);
-        if (!this.expandAllStages && !body.classList.contains("collapsed")) {
-          body.classList.add("collapsed");
-          document.getElementById(`dChev${n}`).textContent = "▶";
+        if (!body.classList.contains("collapsed") && !this.allExpanded) {
+          this.collapseAllStages();
         } else {
           this.openStage(n);
         }
-      });
-    });
-
-    document.getElementById("btnToggleExpandAllDelivery").addEventListener("click", () => {
-      this.expandAllStages = !this.expandAllStages;
-      document.getElementById("btnToggleExpandAllDelivery").textContent = this.expandAllStages ? "Collapse All" : "Expand All";
-      [1, 2, 3].forEach(n => {
-        document.getElementById(`dBody${n}`).classList.toggle("collapsed", !this.expandAllStages);
-        document.getElementById(`dChev${n}`).textContent = this.expandAllStages ? "▼" : "▶";
       });
     });
 
@@ -776,72 +918,68 @@ const DeliveryModule = {
       this.startNewTask(true);
       this.openStage(1);
     });
+    document.getElementById("btnToggleExpandAllDelivery").addEventListener("click", () => this.toggleExpandAll());
 
-    // Stage 1 Dynamic Controls
-    document.getElementById("dNature").addEventListener("input", () => this.syncNatureUI());
-    document.getElementById("dItemCount").addEventListener("input", () => this.syncNatureUI());
+    // Direction Toggle: Outward vs Inward
+    document.querySelectorAll("#dDirectionGroup button").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const dir = btn.dataset.val;
+        this.currentTask.Direction = dir;
+        this.applyDirectionUI(dir);
+        this.updateStageSummaries();
+        this.refreshLearnedOptions();
+      });
+    });
+
+    document.getElementById("dNature").addEventListener("input", () => this.renderDynamicItems(this.collectDynamicItems()));
     document.getElementById("btnDCountPlus").addEventListener("click", () => {
-      const el = document.getElementById("dItemCount");
-      el.value = Math.min(30, parseInt(el.value || "1", 10) + 1);
-      this.syncNatureUI();
+      const inp = document.getElementById("dItemCount");
+      inp.value = Math.min(30, parseInt(inp.value || "1", 10) + 1);
+      this.renderDynamicItems(this.collectDynamicItems());
     });
     document.getElementById("btnDCountMinus").addEventListener("click", () => {
-      const el = document.getElementById("dItemCount");
-      el.value = Math.max(1, parseInt(el.value || "1", 10) - 1);
-      this.syncNatureUI();
+      const inp = document.getElementById("dItemCount");
+      inp.value = Math.max(1, parseInt(inp.value || "1", 10) - 1);
+      this.renderDynamicItems(this.collectDynamicItems());
     });
+    document.getElementById("dItemCount").addEventListener("input", () => this.renderDynamicItems(this.collectDynamicItems()));
 
     document.getElementById("btnDModeSame").addEventListener("click", () => {
       this.natureMode = "Same";
-      this.syncNatureUI();
+      this.renderDynamicItems(this.collectDynamicItems());
     });
     document.getElementById("btnDModeVarious").addEventListener("click", () => {
       this.natureMode = "Various";
-      this.syncNatureUI();
-    });
-
-    document.getElementById("dDynamicItemsWrap").addEventListener("input", (e) => {
-      if (e.target.dataset.itemNum !== undefined) {
-        this.itemsDraft[Number(e.target.dataset.itemNum)].number = e.target.value;
-      }
-    });
-    document.getElementById("dDynamicItemsWrap").addEventListener("change", (e) => {
-      if (e.target.dataset.itemNature !== undefined) {
-        this.itemsDraft[Number(e.target.dataset.itemNature)].nature = e.target.value;
-      }
+      this.renderDynamicItems(this.collectDynamicItems());
     });
 
     document.querySelectorAll("#dAttachToggleGroup button").forEach(btn => {
       btn.addEventListener("click", () => {
         this.setToggle("dAttachToggleGroup", btn.dataset.val);
-        document.getElementById("dAttachmentsBox").classList.toggle("hidden", btn.dataset.val !== "Yes");
+        const show = btn.dataset.val === "Yes";
+        document.getElementById("dAttachmentsBox").classList.toggle("hidden", !show);
+        if (show) this.renderAttachmentRows(this.collectAttachments());
       });
     });
-    document.getElementById("dAttachCount").addEventListener("input", () => this.renderAttachmentRows());
     document.getElementById("btnDAttachPlus").addEventListener("click", () => {
-      const el = document.getElementById("dAttachCount");
-      el.value = Math.min(20, parseInt(el.value || "1", 10) + 1);
-      this.renderAttachmentRows();
+      const inp = document.getElementById("dAttachCount");
+      inp.value = Math.min(20, parseInt(inp.value || "1", 10) + 1);
+      this.renderAttachmentRows(this.collectAttachments());
     });
     document.getElementById("btnDAttachMinus").addEventListener("click", () => {
-      const el = document.getElementById("dAttachCount");
-      el.value = Math.max(1, parseInt(el.value || "1", 10) - 1);
-      this.renderAttachmentRows();
-    });
-    document.getElementById("dAttachRowsWrap").addEventListener("input", (e) => {
-      if (e.target.dataset.attIdx !== undefined) {
-        this.attachmentsDraft[Number(e.target.dataset.attIdx)] = e.target.value;
-      }
+      const inp = document.getElementById("dAttachCount");
+      inp.value = Math.max(1, parseInt(inp.value || "1", 10) - 1);
+      this.renderAttachmentRows(this.collectAttachments());
     });
 
-    const setTodayTime = (hh, mm) => {
+    const setTodayHour = (hr) => {
       const d = new Date();
-      d.setHours(hh, mm, 0, 0);
+      d.setHours(hr, 0, 0, 0);
       d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
       document.getElementById("dPlannedDT").value = d.toISOString().slice(0, 16);
     };
-    document.getElementById("btnDPlanToday3PM").addEventListener("click", () => setTodayTime(15, 0));
-    document.getElementById("btnDPlanToday5PM").addEventListener("click", () => setTodayTime(17, 0));
+    document.getElementById("btnDPlanToday3PM").addEventListener("click", () => setTodayHour(15));
+    document.getElementById("btnDPlanToday5PM").addEventListener("click", () => setTodayHour(17));
 
     document.querySelectorAll("#dUrgencyGroup button").forEach(btn => {
       btn.addEventListener("click", () => this.setToggle("dUrgencyGroup", btn.dataset.val));
@@ -857,7 +995,8 @@ const DeliveryModule = {
     document.querySelectorAll("#dReceiptGivenGroup button").forEach(btn => {
       btn.addEventListener("click", () => {
         this.setToggle("dReceiptGivenGroup", btn.dataset.val);
-        this.updateStage3ConditionalFields(btn.dataset.val, true);
+        document.getElementById("dReceiptNoBox").classList.toggle("hidden", btn.dataset.val !== "No");
+        document.getElementById("dReceiptYesFields").classList.toggle("hidden", btn.dataset.val !== "Yes");
       });
     });
 
@@ -867,198 +1006,91 @@ const DeliveryModule = {
 
     document.getElementById("view-delivery").addEventListener("click", (e) => {
       if (e.target.dataset.dfill) {
-        document.getElementById(e.target.dataset.dfill).value = e.target.dataset.dval;
-      }
-      if (e.target.dataset.dnaturePick) {
-        document.getElementById("dNature").value = e.target.dataset.dnaturePick;
-        this.syncNatureUI();
+        const el = document.getElementById(e.target.dataset.dfill);
+        el.value = e.target.dataset.dval;
+        if (e.target.dataset.dfill === "dNature") this.renderDynamicItems(this.collectDynamicItems());
       }
       if (e.target.dataset.dpattern) {
-        const emptyIdx = this.itemsDraft.findIndex(x => !x.number);
-        const idx = emptyIdx !== -1 ? emptyIdx : 0;
-        this.itemsDraft[idx].number = e.target.dataset.dpattern;
-        this.renderDynamicItemRows();
-        const inp = document.querySelector(`[data-item-num="${idx}"]`);
-        if (inp) inp.focus();
+        const firstEmpty = [...document.querySelectorAll(".d-item-number")].find(i => !i.value.trim()) || document.querySelector(".d-item-number");
+        if (firstEmpty) {
+          firstEmpty.value = e.target.dataset.dpattern;
+          firstEmpty.focus();
+        }
       }
       if (e.target.dataset.durg) {
         document.querySelectorAll("[data-durg]").forEach(b => b.classList.remove("active"));
         e.target.classList.add("active");
-        this.activeUrgencyFilter = e.target.dataset.durg;
-        this.refreshAllViews();
+        this.urgencyFilter = e.target.dataset.durg;
+        this.renderActiveTasks();
       }
-      if (e.target.dataset.moveTask) {
-        const id = e.target.dataset.moveTask;
-        const dir = parseInt(e.target.dataset.dir, 10);
-        const idx = AppStore.deliveries.findIndex(t => String(t.Task_ID) === String(id));
-        const swapIdx = idx + dir;
-        if (idx !== -1 && swapIdx >= 0 && swapIdx < AppStore.deliveries.length) {
-          [AppStore.deliveries[idx], AppStore.deliveries[swapIdx]] = [AppStore.deliveries[swapIdx], AppStore.deliveries[idx]];
-          AppStore.saveCache();
-          this.refreshAllViews();
-        }
-        return;
+      if (e.target.dataset.loadDtask) {
+        this.loadTask(e.target.dataset.loadDtask, parseInt(e.target.dataset.dopenStage || "1", 10));
       }
-      const tile2 = e.target.closest("[data-open-stage2]");
-      if (tile2) {
-        this.loadTask(tile2.dataset.openStage2, 2);
-      }
-      if (e.target.dataset.openStage3) {
-        this.loadTask(e.target.dataset.openStage3, 3);
-      }
-      if (e.target.dataset.viewReport) {
-        this.openReadOnlyReportModal(e.target.dataset.viewReport);
+      if (e.target.dataset.inspectDtask) {
+        this.openReportModal(e.target.dataset.inspectDtask);
       }
     });
 
     document.getElementById("btnSortTasksAuto").addEventListener("click", () => {
-      const rank = { "Very Urgent": 1, "Urgent": 2, "Normal": 3 };
-      AppStore.deliveries.sort((a, b) => {
-        const rDiff = (rank[a.Urgency] || 3) - (rank[b.Urgency] || 3);
-        if (rDiff !== 0) return rDiff;
-        return String(a.Planned_Delivery_DT || "9").localeCompare(String(b.Planned_Delivery_DT || "9"));
-      });
-      AppStore.saveCache();
-      this.refreshAllViews();
-      showToast("Sorted by Urgency & Delivery Time");
+      this.urgencyFilter = "ALL";
+      document.querySelectorAll("[data-durg]").forEach(b => b.classList.toggle("active", b.dataset.durg === "ALL"));
+      this.renderActiveTasks();
+      showToast("Sorted by Urgency & Time");
     });
 
-    // Unreported Multi-Select Checkboxes
     document.getElementById("dUnreportedTasksList").addEventListener("change", (e) => {
-      const id = e.target.dataset.unrepCheck;
-      if (!id) return;
-      if (e.target.checked) this.selectedUnrepIds.add(String(id));
-      else this.selectedUnrepIds.delete(String(id));
-      document.getElementById("dSelectedUnrepCount").textContent = this.selectedUnrepIds.size;
-    });
-
-    document.getElementById("btnSelectAllUnrep").addEventListener("click", () => {
-      const unrep = AppStore.deliveries.filter(t => t.Delivery_Status === "Delivered" && !t.Receipt_Given);
-      unrep.forEach(t => this.selectedUnrepIds.add(String(t.Task_ID)));
-      this.refreshAllViews();
-    });
-
-    // Open Dedicated Group Reporting Modal (keeps all checked Task IDs intact)
-    document.getElementById("btnBatchReportUnrep").addEventListener("click", () => {
-      if (!this.selectedUnrepIds.size) {
-        showToast("Check at least 1 unreported task first.");
-        return;
+      if (e.target.dataset.unrepChk) {
+        if (e.target.checked) this.selectedUnrepIds.add(e.target.dataset.unrepChk);
+        else this.selectedUnrepIds.delete(e.target.dataset.unrepChk);
+        this.renderUnreportedTasks();
       }
-      const ids = Array.from(this.selectedUnrepIds);
-      const selectedObjects = AppStore.deliveries.filter(t => ids.includes(String(t.Task_ID)));
-      const officeList = selectedObjects.map(t => t.Office_Name).join(", ");
-
-      document.getElementById("groupReportSummary").innerHTML =
-        `<span class="small"><strong>${ids.length} Tasks:</strong> ${officeList}</span>`;
-
-      this.setToggle("grpReceiptGivenGroup", "");
-      document.getElementById("grpReceiptNoBox").classList.add("hidden");
-      document.getElementById("grpReceiptYesFields").classList.add("hidden");
-      document.getElementById("grpReceiptNoReason").value = "";
-      document.getElementById("grpReceiverName").value = "";
-      document.getElementById("grpReportedDT").value = "";
-
-      document.getElementById("grpReceiptNoChips").innerHTML = CONFIG.DEFAULT_RECEIPT_NO_REASONS.map(r =>
-        `<button type="button" class="smart-chip" data-grpfill="grpReceiptNoReason" data-grpval="${r}">${r}</button>`
-      ).join("");
-
-      const receivers = AppStore.rankByFrequency([
-        ...AppStore.deliveries.map(d => d.Receiver_Name),
-        ...AppStore.batches.map(b => b.Received_By_Name)
-      ]).slice(0, 6);
-      document.getElementById("grpReceiverChips").innerHTML = receivers.map((r, i) =>
-        `<button type="button" class="smart-chip ${i === 0 ? "top-rank" : ""}" data-grpfill="grpReceiverName" data-grpval="${r}">${r}</button>`
-      ).join("");
-
-      document.getElementById("groupReportModal").classList.remove("hidden");
+    });
+    document.getElementById("btnSelectAllUnrep").addEventListener("click", () => {
+      AppStore.deliveries
+        .filter(t => (t.Direction || "Outward") === "Outward" && t.Delivery_Status === "Delivered" && !t.Receipt_Given)
+        .forEach(t => this.selectedUnrepIds.add(t.Task_ID));
+      this.renderUnreportedTasks();
+    });
+    document.getElementById("btnBatchReportUnrep").addEventListener("click", () => {
+      this.openGroupReportModal();
+    });
+    document.getElementById("btnCancelBatchReport").addEventListener("click", () => {
+      this.batchReportIds = [];
+      document.getElementById("dBatchReportBanner").classList.add("hidden");
     });
 
-    document.getElementById("btnCloseGroupReport").addEventListener("click", () => {
-      document.getElementById("groupReportModal").classList.add("hidden");
-    });
-
+    // Group Reporting Modal Listeners
     document.querySelectorAll("#grpReceiptGivenGroup button").forEach(btn => {
       btn.addEventListener("click", () => {
-        const val = btn.dataset.val;
-        this.setToggle("grpReceiptGivenGroup", val);
-        document.getElementById("grpReceiptNoBox").classList.toggle("hidden", val !== "No");
-        document.getElementById("grpReceiptYesFields").classList.toggle("hidden", val !== "Yes");
-        if (val === "Yes") {
-          const dt = document.getElementById("grpReportedDT");
-          if (!dt.value) {
-            dt.value = DateTimeHelper.nowLocalISO();
-            dt.max = dt.value;
-          }
-        }
+        this.setToggle("grpReceiptGivenGroup", btn.dataset.val);
+        document.getElementById("grpReceiptNoBox").classList.toggle("hidden", btn.dataset.val !== "No");
+        document.getElementById("grpReceiptYesFields").classList.toggle("hidden", btn.dataset.val !== "Yes");
       });
     });
-
     document.getElementById("groupReportModal").addEventListener("click", (e) => {
       if (e.target.dataset.grpfill) {
         document.getElementById(e.target.dataset.grpfill).value = e.target.dataset.grpval;
       }
     });
-
-    document.getElementById("btnSaveGroupReport").addEventListener("click", async () => {
-      const receiptGiven = this.getToggle("grpReceiptGivenGroup");
-      if (!receiptGiven) {
-        showToast("Select Yes or No for Receipt.");
-        return;
-      }
-      const noReason = document.getElementById("grpReceiptNoReason").value.trim();
-      const receiver = document.getElementById("grpReceiverName").value.trim();
-      const reportedDT = document.getElementById("grpReportedDT").value || DateTimeHelper.nowLocalISO();
-
-      if (receiptGiven === "No" && !noReason) {
-        showToast("Enter reason why receipt was not given.");
-        document.getElementById("grpReceiptNoReason").focus();
-        return;
-      }
-      if (receiptGiven === "Yes" && !receiver) {
-        showToast("Enter Receiver's Name.");
-        document.getElementById("grpReceiverName").focus();
-        return;
-      }
-
-      const ids = Array.from(this.selectedUnrepIds);
-      const updatedBatch = [];
-
-      ids.forEach(id => {
-        const idx = AppStore.deliveries.findIndex(t => String(t.Task_ID) === String(id));
-        if (idx !== -1) {
-          AppStore.deliveries[idx] = {
-            ...AppStore.deliveries[idx],
-            Delivery_Status: "Delivered",
-            Receipt_Given: receiptGiven,
-            Receipt_No_Reason: receiptGiven === "No" ? noReason : "",
-            Receiver_Name: receiptGiven === "Yes" ? receiver : "",
-            Reported_DateTime: receiptGiven === "Yes" ? reportedDT : DateTimeHelper.nowLocalISO()
-          };
-          updatedBatch.push(AppStore.deliveries[idx]);
-        }
-      });
-
-      this.selectedUnrepIds.clear();
+    document.getElementById("btnCloseGroupReport").addEventListener("click", () => {
       document.getElementById("groupReportModal").classList.add("hidden");
-      this.refreshAllViews();
-
-      if (updatedBatch.length) {
-        await AppStore.pushAction("saveDeliveryBatch", updatedBatch);
-        showToast(`${updatedBatch.length} tasks reported & moved to History ✓`);
-      }
+    });
+    document.getElementById("btnSaveGroupReport").addEventListener("click", () => {
+      this.saveGroupReport();
     });
 
-    // History Filters & Sort Listeners
-    ["dHistorySearch", "dHistorySort", "dHistoryFilterStatus", "dHistoryFilterOffice", "dHistoryFilterNature", "dHistoryFilterDesig", "dHistoryFilterReceiver", "dHistoryDateFrom", "dHistoryDateTo"].forEach(id => {
+    // History Filters
+    ["dHistorySearch", "dHistorySort", "dHistoryFilterDirection", "dHistoryFilterStatus", "dHistoryFilterOffice", "dHistoryFilterNature", "dHistoryFilterDesig", "dHistoryFilterReceiver", "dHistoryDateFrom", "dHistoryDateTo"].forEach(id => {
       const el = document.getElementById(id);
       if (el) {
-        el.addEventListener(el.tagName === "INPUT" && el.type === "text" ? "input" : "change", () => this.refreshAllViews());
+        el.addEventListener("input", () => this.renderHistory());
+        el.addEventListener("change", () => this.renderHistory());
       }
     });
-
     document.getElementById("btnResetDHistoryFilters").addEventListener("click", () => {
       document.getElementById("dHistorySearch").value = "";
       document.getElementById("dHistorySort").value = "NEWEST";
+      document.getElementById("dHistoryFilterDirection").value = "ALL";
       document.getElementById("dHistoryFilterStatus").value = "ALL";
       document.getElementById("dHistoryFilterOffice").value = "ALL";
       document.getElementById("dHistoryFilterNature").value = "ALL";
@@ -1066,34 +1098,24 @@ const DeliveryModule = {
       document.getElementById("dHistoryFilterReceiver").value = "ALL";
       document.getElementById("dHistoryDateFrom").value = "";
       document.getElementById("dHistoryDateTo").value = "";
-      this.refreshAllViews();
+      this.renderHistory();
     });
 
-    // Read-Only History Report Modal & Intentional Edit Warning Listeners
-    const closeReportModal = () => {
-      document.getElementById("deliveryReportModal").classList.add("hidden");
-      this.viewingReportTaskId = null;
-    };
-    document.getElementById("btnCloseDeliveryReport").addEventListener("click", closeReportModal);
-    document.getElementById("btnCloseDeliveryReport2").addEventListener("click", closeReportModal);
-
+    // Read-Only Report Modal & Protected Edit Unlock
+    document.getElementById("btnCloseDeliveryReport").addEventListener("click", () => document.getElementById("deliveryReportModal").classList.add("hidden"));
+    document.getElementById("btnCloseDeliveryReport2").addEventListener("click", () => document.getElementById("deliveryReportModal").classList.add("hidden"));
     document.getElementById("btnRequestEditHistory").addEventListener("click", () => {
       document.getElementById("deliveryEditWarningBox").classList.remove("hidden");
       document.getElementById("deliveryReportFooter").classList.add("hidden");
     });
-
     document.getElementById("btnCancelHistoryEditWarn").addEventListener("click", () => {
       document.getElementById("deliveryEditWarningBox").classList.add("hidden");
       document.getElementById("deliveryReportFooter").classList.remove("hidden");
     });
-
     document.getElementById("btnConfirmUnlockHistoryEdit").addEventListener("click", () => {
-      const id = this.viewingReportTaskId;
-      closeReportModal();
-      if (id) {
-        this.loadTask(id, 1);
-        showToast("Unlocked completed record for editing");
-      }
+      document.getElementById("deliveryReportModal").classList.add("hidden");
+      if (this.inspectingTaskId) this.loadTask(this.inspectingTaskId, 1);
+      showToast("Unlocked for editing");
     });
   }
 };
