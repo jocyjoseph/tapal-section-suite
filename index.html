@@ -33,7 +33,7 @@
       <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
       <span>Postage (SOM)</span>
     </button>
-    <button type="button" class="nav-tab" data-tab="delivery" title="Local Delivery, Collections & Office Enquiries">
+    <button type="button" class="nav-tab" data-tab="delivery" title="Local Delivery & Inward Collection">
       <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 7c0-1.1-.9-2-2-2h-3v2h3v2.65L13.52 14H10V9H6c-2.21 0-4 1.79-4 4v3h2c0 1.66 1.34 3 3 3s3-1.34 3-3h4.48L19 10.35V7zM7 17c-.55 0-1-.45-1-1h2c0 .55-.45 1-1 1z"/></svg>
       <span>Local Delivery</span>
     </button>
@@ -314,7 +314,7 @@
   </main>
 
   <!-- ===================================================================== -->
-  <!-- MODULE 2: LOCAL DELIVERY / INWARD                                     -->
+  <!-- MODULE 2: LOCAL DELIVERY & INWARD COLLECTION                          -->
   <!-- ===================================================================== -->
   <main id="view-delivery" class="container module-view hidden no-print">
     <div class="sub-nav-bar" style="grid-template-columns: repeat(4, 1fr);">
@@ -326,27 +326,37 @@
 
     <div id="dsub-entry" class="dsub-panel">
       <div class="row-between mb-8">
-        <button type="button" id="btnNewDelivery" class="btn btn-primary btn-sm">+ New Task</button>
+        <button type="button" id="btnNewDelivery" class="btn btn-primary btn-sm">+ New Entry</button>
         <div class="row-gap">
-          <span id="dActiveTaskBanner" class="badge primary">New Task</span>
+          <span id="dActiveTaskBanner" class="badge primary">New Outward Task</span>
           <button type="button" id="btnToggleExpandAllDelivery" class="btn-mini accent">Expand All</button>
         </div>
       </div>
 
+      <!-- DIRECTION SWITCH: OUTWARD (DELIVERY TO OTHER OFFICE) VS INWARD (COLLECTION TO OUR OFFICE) -->
+      <section class="card" style="padding:10px 12px;">
+        <div class="micro-label">Task Type / Direction</div>
+        <div class="toggle-row" id="dDirectionGroup">
+          <button type="button" class="toggle-btn selected" data-val="Outward">📤 Outward (Deliver to Office)</button>
+          <button type="button" class="toggle-btn" data-val="Inward">📥 Inward (Collect to Our Office)</button>
+        </div>
+      </section>
+
+      <!-- STAGE 1 -->
       <section class="accordion-card" id="dCard1">
         <div class="accordion-header" data-dstage="1">
           <div class="row-gap">
             <span class="stage-num">1</span>
             <div>
-              <span class="stage-tag">STAGE 1 • TASK CREATION</span>
-              <h2 id="dSummary1">Create Delivery / Field Task</h2>
+              <span class="stage-tag" id="dStage1Tag">STAGE 1 • TASK CREATION</span>
+              <h2 id="dSummary1">Create Delivery Task</h2>
             </div>
           </div>
           <span class="chevron" id="dChev1">▶</span>
         </div>
         <div class="accordion-body collapsed" id="dBody1">
           <div class="form-group">
-            <label>1. Date & Time</label>
+            <label id="lblDCreatedDT">1. Date & Time</label>
             <div class="dt-controls">
               <input type="datetime-local" id="dCreatedDT" />
               <button type="button" class="btn-mini" data-step-dt="dCreatedDT" data-days="-1">−1d</button>
@@ -355,19 +365,19 @@
             </div>
           </div>
           <div class="form-group">
-            <label>2. Office Name</label>
+            <label id="lblDOfficeName">2. To Office Name</label>
             <div id="dOfficeChips" class="chip-wrap mb-6"></div>
             <input type="text" id="dOfficeName" list="dOfficeList" placeholder="Select or type office name..." />
             <datalist id="dOfficeList"></datalist>
           </div>
           <div class="form-group">
-            <label>3. Designation</label>
+            <label id="lblDDesignation">3. Designation</label>
             <div id="dDesigChips" class="chip-wrap mb-6"></div>
             <input type="text" id="dDesignation" list="dDesigList" placeholder="Select or type designation..." />
             <datalist id="dDesigList"></datalist>
           </div>
           <div class="form-group">
-            <label>4. Section</label>
+            <label id="lblDSection">4. Section</label>
             <div id="dSectionChips" class="chip-wrap mb-6"></div>
             <input type="text" id="dSection" list="dSectionList" placeholder="Select or type section..." />
             <datalist id="dSectionList"></datalist>
@@ -422,7 +432,8 @@
               <div id="dAttachRowsWrap"></div>
             </div>
           </div>
-          <div class="form-group">
+          <!-- PLANNED TIME (SHOWN FOR OUTWARD ONLY; HIDDEN FOR INWARD COLLECTION) -->
+          <div class="form-group" id="dPlannedDTGroup">
             <label>12. Planned Delivery Time</label>
             <div class="dt-controls">
               <input type="datetime-local" id="dPlannedDT" data-allow-future="true" />
@@ -431,7 +442,7 @@
             </div>
           </div>
           <div class="form-group">
-            <label>13. Urgency Scale</label>
+            <label id="lblDUrgency">Urgency Scale</label>
             <div class="toggle-row" id="dUrgencyGroup">
               <button type="button" class="toggle-btn selected" data-val="Normal">Normal</button>
               <button type="button" class="toggle-btn" data-val="Urgent">Urgent</button>
@@ -442,20 +453,21 @@
         </div>
       </section>
 
+      <!-- STAGE 2 -->
       <section class="accordion-card" id="dCard2">
         <div class="accordion-header" data-dstage="2">
           <div class="row-gap">
             <span class="stage-num">2</span>
             <div>
-              <span class="stage-tag">STAGE 2 • TASK COMPLETION</span>
-              <h2 id="dSummary2">Delivery Status & Time</h2>
+              <span class="stage-tag" id="dStage2Tag">STAGE 2 • TASK COMPLETION</span>
+              <h2 id="dSummary2">Delivery Status, Receiver & Time</h2>
             </div>
           </div>
           <span class="chevron" id="dChev2">▶</span>
         </div>
         <div class="accordion-body collapsed" id="dBody2">
           <div class="form-group">
-            <label>1. Status</label>
+            <label>1. Delivery Status</label>
             <div class="toggle-row" id="dStatusGroup">
               <button type="button" class="toggle-btn" data-val="Delivered">Delivered</button>
               <button type="button" class="toggle-btn" data-val="Not Delivered">Not Delivered</button>
@@ -467,7 +479,7 @@
             <input type="text" id="dNotDelivReason" placeholder="Why was it not delivered?" />
           </div>
           <div class="form-group">
-            <label>3. Date & Time</label>
+            <label id="lblDCompletedDT">3. Date & Time</label>
             <div class="dt-controls">
               <input type="datetime-local" id="dCompletedDT" />
               <button type="button" class="btn-mini" data-step-dt="dCompletedDT" data-days="-1">−1d</button>
@@ -476,19 +488,25 @@
             </div>
           </div>
           <div class="form-group">
-            <label>4. Comments</label>
-            <input type="text" id="dStage2Comments" placeholder="Delivery notes..." />
+            <label id="lblDStage2Receiver">4. Receiver's Name</label>
+            <div id="dStage2ReceiverChips" class="chip-wrap mb-6"></div>
+            <input type="text" id="dStage2ReceiverName" placeholder="Name of person who received the file/document..." />
+          </div>
+          <div class="form-group">
+            <label>5. Comments</label>
+            <input type="text" id="dStage2Comments" placeholder="Delivery / handover notes..." />
           </div>
           <button type="button" id="btnSaveDStage2" class="btn btn-primary btn-block mt-12">Save Stage 2</button>
         </div>
       </section>
 
+      <!-- STAGE 3 (SHOWN FOR OUTWARD ONLY; HIDDEN FOR INWARD COLLECTION) -->
       <section class="accordion-card" id="dCard3">
         <div class="accordion-header" data-dstage="3">
           <div class="row-gap">
             <span class="stage-num">3</span>
             <div>
-              <span class="stage-tag">STAGE 3 • TASK REPORTING</span>
+              <span class="stage-tag">STAGE 3 • RECEIPT REPORTING</span>
               <h2 id="dSummary3">Receipt Handover & Receiver</h2>
             </div>
           </div>
@@ -513,9 +531,9 @@
           </div>
           <div id="dReceiptYesFields" class="hidden">
             <div class="form-group">
-              <label>3. Receiver's Name</label>
+              <label>3. Receipt Receiver's Name</label>
               <div id="dReceiverChips" class="chip-wrap mb-6"></div>
-              <input type="text" id="dReceiverName" placeholder="Name of person who received receipt" />
+              <input type="text" id="dReceiverName" placeholder="Staff who received the signed receipt" />
             </div>
             <div class="form-group">
               <label>4. Date & Time of Receiving</label>
@@ -536,9 +554,10 @@
       <div class="row-between mb-8">
         <div class="chip-scroll" id="dTaskUrgencyFilters">
           <button type="button" class="batch-chip active" data-durg="ALL">All</button>
+          <button type="button" class="batch-chip" data-durg="OUTWARD">📤 Outward</button>
+          <button type="button" class="batch-chip" data-durg="INWARD">📥 Inward</button>
           <button type="button" class="batch-chip" data-durg="Very Urgent">Very Urgent</button>
           <button type="button" class="batch-chip" data-durg="Urgent">Urgent</button>
-          <button type="button" class="batch-chip" data-durg="Normal">Normal</button>
         </div>
         <button type="button" id="btnSortTasksAuto" class="btn-mini accent">⇅ Auto Sort</button>
       </div>
@@ -548,7 +567,7 @@
     <div id="dsub-unreported" class="dsub-panel hidden">
       <section class="card">
         <div class="row-between">
-          <span class="micro-label" style="margin:0;">Select tasks to report together (<span id="dSelectedUnrepCount">0</span>)</span>
+          <span class="micro-label" style="margin:0;">Outward tasks awaiting receipt handover (<span id="dSelectedUnrepCount">0</span>)</span>
           <div class="row-gap">
             <button type="button" id="btnSelectAllUnrep" class="btn-mini">All</button>
             <button type="button" id="btnBatchReportUnrep" class="btn btn-success btn-sm">Report Selected →</button>
@@ -561,7 +580,7 @@
     <div id="dsub-history" class="dsub-panel hidden">
       <section class="card">
         <div class="row-gap">
-          <input type="text" id="dHistorySearch" placeholder="Search file no, description, comments..." />
+          <input type="text" id="dHistorySearch" placeholder="Search file no, receiver, description..." />
           <select id="dHistorySort" style="max-width:145px;">
             <option value="NEWEST">Sort: Newest</option>
             <option value="OLDEST">Sort: Oldest</option>
@@ -570,6 +589,11 @@
           </select>
         </div>
         <div class="row-gap mt-8" style="flex-wrap:wrap;">
+          <select id="dHistoryFilterDirection" style="flex:1; min-width:120px;">
+            <option value="ALL">Direction: All</option>
+            <option value="Outward">📤 Outward (Delivered)</option>
+            <option value="Inward">📥 Inward (Collected)</option>
+          </select>
           <select id="dHistoryFilterStatus" style="flex:1; min-width:120px;">
             <option value="ALL">Receipt: All</option>
             <option value="GIVEN">Receipt Given</option>
@@ -578,11 +602,11 @@
           <select id="dHistoryFilterOffice" style="flex:1; min-width:120px;">
             <option value="ALL">Office: All</option>
           </select>
+        </div>
+        <div class="row-gap mt-8" style="flex-wrap:wrap;">
           <select id="dHistoryFilterNature" style="flex:1; min-width:120px;">
             <option value="ALL">Nature: All</option>
           </select>
-        </div>
-        <div class="row-gap mt-8" style="flex-wrap:wrap;">
           <select id="dHistoryFilterDesig" style="flex:1; min-width:120px;">
             <option value="ALL">Designation: All</option>
           </select>
