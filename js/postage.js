@@ -158,8 +158,91 @@ const PostageModule = {
   },
 
   // =========================================================
-  // HIGH-SPEED 1D CODE-128 BARCODE SCANNER (LOMAG-STYLE AIM)
+  // LOMAG EXCEL IMPORT + REPEAT-PREVIOUS MANUAL BARCODE ENTRY
   // =========================================================
+  async handleLoMagFileImport(file) {
+    if (!file) return;
+    const fileName = file.name.toLowerCase();
+
+    try {
+      let extractedCodes = [];
+
+      if ((fileName.endsWith(".xls") || fileName.endsWith(".xlsx")) && typeof XLSX !== "undefined") {
+        const buffer = await file.arrayBuffer();
+        const workbook = XLSX.read(buffer, { type: "array" });
+        const firstSheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[firstSheetName];
+        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+
+        // First look for LoMag "Item code" column header
+        let itemColIdx = -1;
+        if (rows.length > 0 && Array.isArray(rows[0])) {
+          itemColIdx = rows[0].findIndex(h => String(h).trim().toLowerCase() === "item code");
+        }
+
+        if (itemColIdx !== -1) {
+          for (let r = 1; r < rows.length; r++) {
+            const cellVal = String(rows[r][itemColIdx] || "").trim().toUpperCase();
+            if (cellVal) extractedCodes.push(cellVal);
+          }
+        } else {
+          // Fallback: scan all cells for standard India Post S10 barcodes
+          rows.forEach(row => {
+            if (!Array.isArray(row)) return;
+            row.forEach(cell => {
+              const matches = String(cell || "").toUpperCase().match(/[A-Z]{2}\d{9}IN/g);
+              if (matches) extractedCodes.push(...matches);
+            });
+          });
+        }
+      } else {
+        // Fallback for .csv or .txt exports
+        const text = await file.text();
+        const matches = text.toUpperCase().match(/[A-Z]{2}\d{9}IN/g);
+        if (matches) extractedCodes = matches;
+      }
+
+      if (!extractedCodes.length) {
+        showToast("No valid barcodes found in the selected LoMag file.");
+        return;
+      }
+
+      let addedCount = 0;
+      let duplicateCount = 0;
+      extractedCodes.forEach(code => {
+        const ok = this.addBarcodeToCurrentBatch(code, "AUTO", true);
+        if (ok) addedCount++;
+        else duplicateCount++;
+      });
+
+      if (addedCount > 0) {
+        const lastCode = extractedCodes[extractedCodes.length - 1];
+        this.keepPreviousBarcodeInInput(lastCode);
+        showToast(`Imported ${addedCount} barcode(s) from LoMag${duplicateCount ? ` (${duplicateCount} skipped)` : ""} ✓`);
+      } else {
+        showToast(`All ${duplicateCount} barcode(s) were already in this batch.`);
+      }
+    } catch (err) {
+      console.error("LoMag import error:", err);
+      showToast("Could not read LoMag file. Check file format.");
+    }
+  },
+
+  // Keeps the last entered barcode in the input box and selects the middle digits
+  keepPreviousBarcodeInInput(code) {
+    const inp = document.getElementById("manualBarcodeText");
+    if (!inp || !code) return;
+    const clean = String(code).trim().toUpperCase();
+    inp.value = clean;
+    inp.focus();
+    // If standard 13-char India Post format (e.g. EL590202824IN), select the 9 digits (index 2..11)
+    if (clean.length === 13 && clean.endsWith("IN")) {
+      inp.setSelectionRange(2, 11);
+    } else if (clean.length > 2) {
+      inp.setSelectionRange(2, clean.length);
+    }
+  },
+
   getPostalScannerConfig() {
     const config = {
       fps: 20,
@@ -204,13 +287,13 @@ const PostageModule = {
     return { speed, reg };
   },
 
-  addBarcodeToCurrentBatch(rawCode, overrideType = "AUTO") {
+  addBarcodeToCurrentBatch(rawCode, overrideType = "AUTO", silent = false) {
     const parsed = this.classifyBarcode(rawCode, overrideType);
     if (!parsed) return false;
 
     const { speed, reg } = this.getBarcodeArrays();
     if (speed.includes(parsed.code) || reg.includes(parsed.code)) {
-      showToast(`Already scanned: ${parsed.code}`);
+      if (!silent) showToast(`Already added: ${parsed.code}`);
       return false;
     }
 
@@ -226,10 +309,12 @@ const PostageModule = {
       if (parseInt(rgInp.value || "0", 10) < reg.length) rgInp.value = reg.length;
     }
 
-    if (navigator.vibrate) navigator.vibrate(60);
+    if (!silent) {
+      if (navigator.vibrate) navigator.vibrate(60);
+      showToast(`Added ${parsed.type === "SPEED" ? "Speed" : "Registered"}: ${parsed.code}`);
+    }
     this.recalcTotal();
     this.renderScannedBarcodes();
-    showToast(`Added ${parsed.type === "SPEED" ? "Speed" : "Registered"}: ${parsed.code}`);
     return true;
   },
 
@@ -253,7 +338,7 @@ const PostageModule = {
     }
 
     if (typeof Html5Qrcode === "undefined") {
-      showToast("Scanner library offline — type or paste barcode.");
+      showToast("Scanner library offline — import LoMag .xls or type barcode.");
       return;
     }
 
@@ -266,13 +351,15 @@ const PostageModule = {
         { facingMode: "environment" },
         this.getPostalScannerConfig(),
         (decodedText) => {
-          this.addBarcodeToCurrentBatch(decodedText, "AUTO");
+          if (this.addBarcodeToCurrentBatch(decodedText, "AUTO")) {
+            this.keepPreviousBarcodeInInput(decodedText);
+          }
         },
         () => {}
       );
     } catch (err) {
       box.classList.add("hidden");
-      btnText.textContent = "Scan";
+      btnText.textContent = "📷 Scan";
       this.batchScanner = null;
       showToast("Camera permission denied or unavailable.");
     }
@@ -289,7 +376,7 @@ const PostageModule = {
       this.batchScanner = null;
     }
     if (box) box.classList.add("hidden");
-    if (btnText) btnText.textContent = "Scan";
+    if (btnText) btnText.textContent = "📷 Scan";
   },
 
   async toggleSearchScanner() {
@@ -403,7 +490,6 @@ const PostageModule = {
       return false;
     }
 
-    // Duplicate SOM check against all other batches
     const duplicate = AppStore.batches.find(
       b => String(b.SOM_Number).trim().toLowerCase() === som.toLowerCase() &&
            String(b.Batch_ID) !== String(this.currentBatch.Batch_ID)
@@ -730,24 +816,50 @@ const PostageModule = {
       document.getElementById(id).addEventListener("input", () => this.recalcTotal());
     });
 
-    // Scanner & Manual / Paste Barcode Controls
-    document.getElementById("btnToggleBatchScanner").addEventListener("click", () => this.toggleBatchScanner());
-    document.getElementById("btnAddManualBarcode").addEventListener("click", () => {
-      const inp = document.getElementById("manualBarcodeText");
-      const type = document.getElementById("manualBarcodeType").value;
-      if (this.addBarcodeToCurrentBatch(inp.value, type)) inp.value = "";
+    // LoMag Excel File Import (.xls / .xlsx / .csv)
+    const lomagInp = document.getElementById("lomagFileInput");
+    document.getElementById("btnImportLoMag").addEventListener("click", () => {
+      lomagInp.value = "";
+      lomagInp.click();
+    });
+    lomagInp.addEventListener("change", (e) => {
+      if (e.target.files && e.target.files[0]) {
+        this.handleLoMagFileImport(e.target.files[0]);
+      }
     });
 
-    // Support pasting one or multiple barcodes (e.g. from LoMag Barcode Scanner)
+    // Scanner & Repeat-Previous Manual Barcode Controls
+    document.getElementById("btnToggleBatchScanner").addEventListener("click", () => this.toggleBatchScanner());
+
+    const addManualAndRepeat = () => {
+      const inp = document.getElementById("manualBarcodeText");
+      const type = document.getElementById("manualBarcodeType").value;
+      const entered = inp.value.trim().toUpperCase();
+      if (this.addBarcodeToCurrentBatch(entered, type)) {
+        // Keep exact copy of previous barcode in the box so user only changes differing digits
+        this.keepPreviousBarcodeInInput(entered);
+      }
+    };
+
+    document.getElementById("btnAddManualBarcode").addEventListener("click", addManualAndRepeat);
+    document.getElementById("manualBarcodeText").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        addManualAndRepeat();
+      }
+    });
+
+    // Also support pasting multiple barcodes at once
     document.getElementById("manualBarcodeText").addEventListener("paste", (e) => {
       const pasted = (e.clipboardData || window.clipboardData).getData("text");
       const codes = pasted.toUpperCase().match(/[A-Z]{2}\d{9}IN/g);
-      if (codes && codes.length > 0) {
+      if (codes && codes.length > 1) {
         e.preventDefault();
         let added = 0;
         codes.forEach(code => {
-          if (this.addBarcodeToCurrentBatch(code, "AUTO")) added++;
+          if (this.addBarcodeToCurrentBatch(code, "AUTO", true)) added++;
         });
+        this.keepPreviousBarcodeInInput(codes[codes.length - 1]);
         if (added > 0) showToast(`Added ${added} barcode(s)`);
       }
     });
