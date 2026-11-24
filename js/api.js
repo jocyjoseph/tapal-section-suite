@@ -1,24 +1,46 @@
 const AppStore = {
-  apiUrl: localStorage.getItem(CONFIG.API_URL_KEY) || CONFIG.DEFAULT_API_URL,
+  apiUrl: "",
   batches: [],
   barcodes: [],
   deliveries: [],
   addresses: [],
   onDataUpdatedCallbacks: [],
+  isSyncing: false,
 
   init() {
+    // Prefer hardcoded DEFAULT_API_URL if set; otherwise use saved localStorage URL
+    const hardcoded = (CONFIG.DEFAULT_API_URL && !CONFIG.DEFAULT_API_URL.includes("PASTE_YOUR"))
+      ? CONFIG.DEFAULT_API_URL.trim()
+      : "";
+    const saved = localStorage.getItem(CONFIG.API_URL_KEY) || "";
+    this.apiUrl = hardcoded || saved;
+
     const cached = localStorage.getItem(CONFIG.STORAGE_KEY);
     if (cached) {
-      const data = JSON.parse(cached);
-      this.batches = data.batches || [];
-      this.barcodes = data.barcodes || [];
-      this.deliveries = data.deliveries || [];
-      this.addresses = data.addresses && data.addresses.length ? data.addresses : [...SAMPLE_ADDRESSES];
+      try {
+        const data = JSON.parse(cached);
+        this.batches = data.batches || [];
+        this.barcodes = data.barcodes || [];
+        this.deliveries = data.deliveries || [];
+        this.addresses = (data.addresses && data.addresses.length) ? data.addresses : [...SAMPLE_ADDRESSES];
+      } catch (e) {
+        this.addresses = [...SAMPLE_ADDRESSES];
+      }
     } else {
       this.addresses = [...SAMPLE_ADDRESSES];
     }
+
     this.notify();
     this.syncAll();
+
+    // Real-time background polling every 20 seconds & on tab focus
+    setInterval(() => {
+      if (!document.hidden) this.syncAll(true);
+    }, 20000);
+
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) this.syncAll(true);
+    });
   },
 
   onUpdate(fn) {
@@ -26,7 +48,9 @@ const AppStore = {
   },
 
   notify() {
-    this.onDataUpdatedCallbacks.forEach(fn => fn());
+    this.onDataUpdatedCallbacks.forEach(fn => {
+      try { fn(); } catch (err) { console.error(err); }
+    });
   },
 
   saveCache() {
@@ -38,23 +62,44 @@ const AppStore = {
     }));
   },
 
-  async syncAll() {
+  dedupeByKey(arr, key) {
+    const seen = new Set();
+    return arr.filter(item => {
+      const id = String(item[key] || "").trim();
+      if (!id || seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+  },
+
+  async syncAll(silent = false) {
     const badge = document.getElementById("syncStatus");
     if (!this.apiUrl || this.apiUrl.includes("PASTE_YOUR")) {
-      badge.textContent = "Local";
-      badge.className = "badge offline";
+      if (badge) {
+        badge.textContent = "Local";
+        badge.className = "badge offline";
+      }
       return;
     }
 
+    if (this.isSyncing) return;
+    this.isSyncing = true;
+
     try {
-      badge.textContent = "Syncing...";
+      if (!silent && badge) badge.textContent = "Syncing...";
       await this.flushQueue();
-      const res = await fetch(`${this.apiUrl}?action=getAllData`);
+
+      // Cache-busting timestamp ensures real-time fresh read from Google Sheets
+      const sep = this.apiUrl.includes("?") ? "&" : "?";
+      const res = await fetch(`${this.apiUrl}${sep}action=getAllData&_t=${Date.now()}`, {
+        cache: "no-store"
+      });
       const data = await res.json();
+
       if (data.status === "ok") {
-        this.batches = data.batches || [];
+        this.batches = this.dedupeByKey(data.batches || [], "Batch_ID");
         this.barcodes = data.barcodes || [];
-        this.deliveries = (data.deliveries || []).map((t, idx) => ({
+        this.deliveries = this.dedupeByKey((data.deliveries || []).map((t, idx) => ({
           Task_ID: String(t.Task_ID || `TASK-${idx + 1}`),
           Created_DateTime: String(t.Created_DateTime || ""),
           Office_Name: String(t.Office_Name || ""),
@@ -79,9 +124,9 @@ const AppStore = {
           Receipt_No_Reason: String(t.Receipt_No_Reason || ""),
           Receiver_Name: String(t.Receiver_Name || ""),
           Reported_DateTime: String(t.Reported_DateTime || "")
-        }));
+        })), "Task_ID");
 
-        if (data.addresses && data.addresses.length) {
+        if (data.addresses && data.addresses.length > 0) {
           this.addresses = data.addresses.map((a, idx) => ({
             District_Sl: String(a.District_Sl || ""),
             Code: String(a.Code || a.Address_ID || `ROW-${idx + 1}`),
@@ -96,15 +141,24 @@ const AppStore = {
             Clerk_Name: String(a.Clerk_Name || ""),
             Clerk_Phone: String(a.Clerk_Phone || "")
           }));
+        } else if (!this.addresses.length) {
+          this.addresses = [...SAMPLE_ADDRESSES];
         }
+
         this.saveCache();
         this.notify();
-        badge.textContent = "Synced ✓";
-        badge.className = "badge online";
+        if (badge) {
+          badge.textContent = "Synced ✓";
+          badge.className = "badge online";
+        }
       }
     } catch (e) {
-      badge.textContent = "Offline";
-      badge.className = "badge offline";
+      if (badge) {
+        badge.textContent = "Offline";
+        badge.className = "badge offline";
+      }
+    } finally {
+      this.isSyncing = false;
     }
   },
 
@@ -116,21 +170,27 @@ const AppStore = {
 
     const badge = document.getElementById("syncStatus");
     try {
-      badge.textContent = "Saving...";
+      if (badge) badge.textContent = "Saving...";
       await fetch(this.apiUrl, {
         method: "POST",
         mode: "no-cors",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
         body: JSON.stringify({ action, data: dataObj })
       });
-      badge.textContent = "Saved ✓";
-      badge.className = "badge online";
+      if (badge) {
+        badge.textContent = "Saved ✓";
+        badge.className = "badge online";
+      }
+      // Pull fresh state from Google Sheets shortly after write to keep history & SOMs in sync
+      setTimeout(() => this.syncAll(true), 1500);
     } catch (e) {
       const q = JSON.parse(localStorage.getItem(CONFIG.QUEUE_KEY) || "[]");
       q.push({ action, data: dataObj });
       localStorage.setItem(CONFIG.QUEUE_KEY, JSON.stringify(q));
-      badge.textContent = "Queued";
-      badge.className = "badge offline";
+      if (badge) {
+        badge.textContent = "Queued";
+        badge.className = "badge offline";
+      }
     }
   },
 
@@ -141,7 +201,7 @@ const AppStore = {
       await fetch(this.apiUrl, {
         method: "POST",
         mode: "no-cors",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
         body: JSON.stringify(item)
       });
     }
@@ -223,6 +283,7 @@ const DateTimeHelper = {
 
 function showToast(msg) {
   const el = document.getElementById("toast");
+  if (!el) return;
   el.textContent = msg;
   el.classList.remove("hidden");
   clearTimeout(el._t);
@@ -230,13 +291,25 @@ function showToast(msg) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  // Ensure Settings modal is strictly closed on load
+  const settingsModal = document.getElementById("settingsModal");
+  if (settingsModal) settingsModal.classList.add("hidden");
+
   document.querySelectorAll(".nav-tab").forEach(tab => {
-    tab.addEventListener("click", () => {
+    tab.addEventListener("click", (e) => {
+      e.stopPropagation();
       document.querySelectorAll(".nav-tab").forEach(t => t.classList.remove("active"));
       tab.classList.add("active");
       const target = tab.dataset.tab;
       document.querySelectorAll(".module-view").forEach(v => v.classList.add("hidden"));
-      document.getElementById(`view-${target}`).classList.remove("hidden");
+      const viewEl = document.getElementById(`view-${target}`);
+      if (viewEl) viewEl.classList.remove("hidden");
+
+      // Refresh Address Directory when switching to Address tab
+      if (target === "address" && typeof AddressModule !== "undefined") {
+        AddressModule.renderDistrictFilters();
+        AddressModule.renderDirectory();
+      }
     });
   });
 
@@ -259,23 +332,37 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  document.getElementById("btnSettings").addEventListener("click", () => {
-    document.getElementById("settingsApiUrl").value = AppStore.apiUrl.includes("PASTE_YOUR") ? "" : AppStore.apiUrl;
-    document.getElementById("settingsModal").classList.remove("hidden");
-  });
-  document.getElementById("btnCloseSettings").addEventListener("click", () => {
-    document.getElementById("settingsModal").classList.add("hidden");
-  });
-  document.getElementById("btnSaveSettings").addEventListener("click", () => {
-    const val = document.getElementById("settingsApiUrl").value.trim();
-    if (val) {
-      AppStore.apiUrl = val;
-      localStorage.setItem(CONFIG.API_URL_KEY, val);
-      document.getElementById("settingsModal").classList.add("hidden");
-      AppStore.syncAll();
-    }
-  });
-  document.getElementById("btnSyncNow").addEventListener("click", () => AppStore.syncAll());
+  const btnSettings = document.getElementById("btnSettings");
+  if (btnSettings) {
+    btnSettings.addEventListener("click", (e) => {
+      e.stopPropagation();
+      document.getElementById("settingsApiUrl").value = AppStore.apiUrl.includes("PASTE_YOUR") ? "" : AppStore.apiUrl;
+      settingsModal.classList.remove("hidden");
+    });
+  }
+
+  const btnCloseSettings = document.getElementById("btnCloseSettings");
+  if (btnCloseSettings) {
+    btnCloseSettings.addEventListener("click", () => settingsModal.classList.add("hidden"));
+  }
+
+  const btnSaveSettings = document.getElementById("btnSaveSettings");
+  if (btnSaveSettings) {
+    btnSaveSettings.addEventListener("click", () => {
+      const val = document.getElementById("settingsApiUrl").value.trim();
+      if (val) {
+        AppStore.apiUrl = val;
+        localStorage.setItem(CONFIG.API_URL_KEY, val);
+        settingsModal.classList.add("hidden");
+        AppStore.syncAll();
+      }
+    });
+  }
+
+  const btnSyncNow = document.getElementById("btnSyncNow");
+  if (btnSyncNow) {
+    btnSyncNow.addEventListener("click", () => AppStore.syncAll());
+  }
 
   AppStore.init();
 });
