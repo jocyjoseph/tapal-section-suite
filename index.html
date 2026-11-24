@@ -307,42 +307,28 @@
     </div>
   </main>
 
-<!-- ===================================================================== -->
+  <!-- ===================================================================== -->
   <!-- MODULE 2: LOCAL DELIVERY / INWARD                                     -->
   <!-- ===================================================================== -->
   <main id="view-delivery" class="container module-view hidden no-print">
-
-    <!-- Sub-Navigation: 1. Task Entry | 2. Tasks | 3. Unreported | 4. History -->
     <div class="sub-nav-bar" style="grid-template-columns: repeat(4, 1fr);">
-      <button type="button" class="sub-nav-btn active" data-dsub="entry" title="Create or update Local Delivery stages">
-        <span>Entry</span>
-      </button>
-      <button type="button" class="sub-nav-btn" data-dsub="tasks" title="Pending deliveries & field tasks">
-        <span>Tasks (<span id="dTasksCount">0</span>)</span>
-      </button>
-      <button type="button" class="sub-nav-btn" data-dsub="unreported" title="Completed deliveries awaiting Stage 3 reporting">
-        <span>Unreported (<span id="dUnrepCount">0</span>)</span>
-      </button>
-      <button type="button" class="sub-nav-btn" data-dsub="history" title="Completed & reported delivery archive">
-        <span>History</span>
-      </button>
+      <button type="button" class="sub-nav-btn active" data-dsub="entry"><span>Entry</span></button>
+      <button type="button" class="sub-nav-btn" data-dsub="tasks"><span>Tasks (<span id="dTasksCount">0</span>)</span></button>
+      <button type="button" class="sub-nav-btn" data-dsub="unreported"><span>Unreported (<span id="dUnrepCount">0</span>)</span></button>
+      <button type="button" class="sub-nav-btn" data-dsub="history"><span>History</span></button>
     </div>
 
-    <!-- ========================================== -->
-    <!-- SUB-VIEW 1: TASK ENTRY (3 COLLAPSIBLE STAGES) -->
-    <!-- ========================================== -->
     <div id="dsub-entry" class="dsub-panel">
       <div class="row-between mb-8">
         <button type="button" id="btnNewDelivery" class="btn btn-primary btn-sm">+ New Task</button>
         <div class="row-gap">
           <span id="dActiveTaskBanner" class="badge primary">New Task</span>
-          <button type="button" id="btnToggleExpandAllDelivery" class="btn-mini accent" title="Expand or collapse all 3 stages">Expand All</button>
+          <button type="button" id="btnToggleExpandAllDelivery" class="btn-mini accent">Expand All</button>
         </div>
       </div>
 
-      <!-- STAGE 1: TASK CREATION -->
       <section class="accordion-card" id="dCard1">
-        <div class="accordion-header" data-dstage="1" title="Tap to open Stage 1 (Task Creation)">
+        <div class="accordion-header" data-dstage="1">
           <div class="row-gap">
             <span class="stage-num">1</span>
             <div>
@@ -352,9 +338,7 @@
           </div>
           <span class="chevron" id="dChev1">▶</span>
         </div>
-
         <div class="accordion-body collapsed" id="dBody1">
-          <!-- 1. Date & Time -->
           <div class="form-group">
             <label>1. Date & Time</label>
             <div class="dt-controls">
@@ -364,40 +348,30 @@
               <button type="button" class="btn-mini accent" data-now-dt="dCreatedDT">Now</button>
             </div>
           </div>
-
-          <!-- 2. Office Name -->
           <div class="form-group">
             <label>2. Office Name</label>
             <div id="dOfficeChips" class="chip-wrap mb-6"></div>
             <input type="text" id="dOfficeName" list="dOfficeList" placeholder="Select or type office name..." />
             <datalist id="dOfficeList"></datalist>
           </div>
-
-          <!-- 3. Designation (Alphabetical) -->
           <div class="form-group">
             <label>3. Designation</label>
             <div id="dDesigChips" class="chip-wrap mb-6"></div>
             <input type="text" id="dDesignation" list="dDesigList" placeholder="Select or type designation..." />
             <datalist id="dDesigList"></datalist>
           </div>
-
-          <!-- 4. Section (Alphabetical) -->
           <div class="form-group">
             <label>4. Section</label>
             <div id="dSectionChips" class="chip-wrap mb-6"></div>
             <input type="text" id="dSection" list="dSectionList" placeholder="Select or type section..." />
             <datalist id="dSectionList"></datalist>
           </div>
-
-          <!-- 5. Nature of File / Document (Alphabetical) -->
           <div class="form-group">
             <label>5. Nature of File / Document</label>
             <div id="dNatureChips" class="chip-wrap mb-6"></div>
             <input type="text" id="dNature" list="dNatureList" value="File" placeholder="e.g. File, Tapal, Cheque, Bill..." />
             <datalist id="dNatureList"></datalist>
           </div>
-
-          <!-- 6. No. of {Nature} + Same / Various Switch -->
           <div class="form-group">
             <label id="lblDItemCount">6. No. of File</label>
             <div class="row-gap">
@@ -406,28 +380,21 @@
                 <input type="number" id="dItemCount" value="1" min="1" max="30" />
                 <button type="button" class="step-btn" id="btnDCountPlus">+</button>
               </div>
-              <!-- Shown automatically when count > 1 -->
               <div id="dSameVariousWrap" class="toggle-row hidden" style="flex:1;">
                 <button type="button" class="toggle-btn selected" data-dmode="Same" id="btnDModeSame">Same</button>
                 <button type="button" class="toggle-btn" data-dmode="Various" id="btnDModeVarious">Various</button>
               </div>
             </div>
           </div>
-
-          <!-- 7. {Nature} No. (Dynamic Rows for Single, Same, or Various) -->
           <div class="form-group">
             <label id="lblDItemNumbers">7. File No.</label>
-            <div id="dPatternChips" class="chip-wrap mb-6" title="Tap a pattern prefix to insert"></div>
+            <div id="dPatternChips" class="chip-wrap mb-6"></div>
             <div id="dDynamicItemsWrap"></div>
           </div>
-
-          <!-- 8. Description (Optional) -->
           <div class="form-group">
             <label>8. Description <span class="muted small">(Optional)</span></label>
             <input type="text" id="dDescription" placeholder="Brief subject or note..." />
           </div>
-
-          <!-- 9. Attachments (Yes / No) -->
           <div class="form-group">
             <label>9. Attachments?</label>
             <div class="toggle-row" id="dAttachToggleGroup">
@@ -435,8 +402,6 @@
               <button type="button" class="toggle-btn selected" data-val="No">No</button>
             </div>
           </div>
-
-          <!-- 10 & 11. Conditional Attachment Count & Detail Rows -->
           <div id="dAttachmentsBox" class="dynamic-schema-box hidden">
             <div class="form-group" style="margin-top:0;">
               <label>10. No. of Attachments</label>
@@ -451,18 +416,14 @@
               <div id="dAttachRowsWrap"></div>
             </div>
           </div>
-
-          <!-- 12. Planned Delivery Time (Allows future time) -->
           <div class="form-group">
             <label>12. Planned Delivery Time</label>
             <div class="dt-controls">
               <input type="datetime-local" id="dPlannedDT" data-allow-future="true" />
-              <button type="button" class="btn-mini accent" id="btnDPlanToday3PM" title="Today 3:00 PM">3 PM</button>
-              <button type="button" class="btn-mini accent" id="btnDPlanToday5PM" title="Today 5:00 PM">5 PM</button>
+              <button type="button" class="btn-mini accent" id="btnDPlanToday3PM">3 PM</button>
+              <button type="button" class="btn-mini accent" id="btnDPlanToday5PM">5 PM</button>
             </div>
           </div>
-
-          <!-- 13. Urgency Scale -->
           <div class="form-group">
             <label>13. Urgency Scale</label>
             <div class="toggle-row" id="dUrgencyGroup">
@@ -471,14 +432,12 @@
               <button type="button" class="toggle-btn" data-val="Very Urgent">Very Urgent</button>
             </div>
           </div>
-
           <button type="button" id="btnSaveDStage1" class="btn btn-primary btn-block mt-12">Save Stage 1 & Add to Tasks</button>
         </div>
       </section>
 
-      <!-- STAGE 2: TASK COMPLETION -->
       <section class="accordion-card" id="dCard2">
-        <div class="accordion-header" data-dstage="2" title="Tap to open Stage 2 (Task Completion)">
+        <div class="accordion-header" data-dstage="2">
           <div class="row-gap">
             <span class="stage-num">2</span>
             <div>
@@ -488,9 +447,7 @@
           </div>
           <span class="chevron" id="dChev2">▶</span>
         </div>
-
         <div class="accordion-body collapsed" id="dBody2">
-          <!-- 1. Status -->
           <div class="form-group">
             <label>1. Status</label>
             <div class="toggle-row" id="dStatusGroup">
@@ -498,15 +455,11 @@
               <button type="button" class="toggle-btn" data-val="Not Delivered">Not Delivered</button>
             </div>
           </div>
-
-          <!-- 2. Not Delivered Reason (Conditional) -->
           <div id="dNotDeliveredBox" class="no-reason-box hidden">
             <label class="danger-text">2. Not Delivered Reason (Required)</label>
             <div id="dNotDelivChips" class="chip-wrap mb-6"></div>
             <input type="text" id="dNotDelivReason" placeholder="Why was it not delivered?" />
           </div>
-
-          <!-- 3. Date & Time -->
           <div class="form-group">
             <label>3. Date & Time</label>
             <div class="dt-controls">
@@ -516,20 +469,16 @@
               <button type="button" class="btn-mini accent" data-now-dt="dCompletedDT">Now</button>
             </div>
           </div>
-
-          <!-- 4. Comments -->
           <div class="form-group">
             <label>4. Comments</label>
             <input type="text" id="dStage2Comments" placeholder="Delivery notes..." />
           </div>
-
           <button type="button" id="btnSaveDStage2" class="btn btn-primary btn-block mt-12">Save Stage 2</button>
         </div>
       </section>
 
-      <!-- STAGE 3: TASK REPORTING -->
       <section class="accordion-card" id="dCard3">
-        <div class="accordion-header" data-dstage="3" title="Tap to open Stage 3 (Task Reporting)">
+        <div class="accordion-header" data-dstage="3">
           <div class="row-gap">
             <span class="stage-num">3</span>
             <div>
@@ -539,14 +488,11 @@
           </div>
           <span class="chevron" id="dChev3">▶</span>
         </div>
-
         <div class="accordion-body collapsed" id="dBody3">
           <div id="dBatchReportBanner" class="som-strip hidden">
-            <span class="som-strip-title" id="dBatchReportText">Batch Reporting: 0 tasks</span>
+            <span class="som-strip-title" id="dBatchReportText">Batch Reporting</span>
             <button type="button" id="btnCancelBatchReport" class="btn-mini">Single Mode</button>
           </div>
-
-          <!-- 1. Given the Receipt? -->
           <div class="form-group">
             <label>1. Given the Receipt?</label>
             <div class="toggle-row" id="dReceiptGivenGroup">
@@ -554,22 +500,17 @@
               <button type="button" class="toggle-btn" data-val="No">No (Not Given)</button>
             </div>
           </div>
-
-          <!-- 2. No Reason (Shown ONLY if No) -->
           <div id="dReceiptNoBox" class="no-reason-box hidden">
             <label class="danger-text">2. Reason Why Receipt Was Not Given (Required)</label>
             <div id="dReceiptNoChips" class="chip-wrap mb-6"></div>
             <input type="text" id="dReceiptNoReason" placeholder="Enter reason..." />
           </div>
-
-          <!-- 3 & 4. Receiver's Name & Date-Time of Receiving (Shown ONLY if Yes) -->
           <div id="dReceiptYesFields" class="hidden">
             <div class="form-group">
-              <label>3. Receiver's Name <span class="muted small">(Most frequent first)</span></label>
+              <label>3. Receiver's Name</label>
               <div id="dReceiverChips" class="chip-wrap mb-6"></div>
               <input type="text" id="dReceiverName" placeholder="Name of person who received receipt" />
             </div>
-
             <div class="form-group">
               <label>4. Date & Time of Receiving</label>
               <div class="dt-controls">
@@ -580,15 +521,11 @@
               </div>
             </div>
           </div>
-
           <button type="button" id="btnSaveDStage3" class="btn btn-success btn-block mt-12">Save Stage 3 & Move to History</button>
         </div>
       </section>
     </div>
 
-    <!-- ========================================== -->
-    <!-- SUB-VIEW 2: ACTIVE TASKS LIST              -->
-    <!-- ========================================== -->
     <div id="dsub-tasks" class="dsub-panel hidden">
       <div class="row-between mb-8">
         <div class="chip-scroll" id="dTaskUrgencyFilters">
@@ -597,14 +534,11 @@
           <button type="button" class="batch-chip" data-durg="Urgent">Urgent</button>
           <button type="button" class="batch-chip" data-durg="Normal">Normal</button>
         </div>
-        <button type="button" id="btnSortTasksAuto" class="btn-mini accent" title="Sort by Urgency & Planned Time">⇅ Auto Sort</button>
+        <button type="button" id="btnSortTasksAuto" class="btn-mini accent">⇅ Auto Sort</button>
       </div>
       <div id="dActiveTasksList"></div>
     </div>
 
-    <!-- ========================================== -->
-    <!-- SUB-VIEW 3: UNREPORTED TASKS (MULTI-SELECT)-->
-    <!-- ========================================== -->
     <div id="dsub-unreported" class="dsub-panel hidden">
       <section class="card">
         <div class="row-between">
@@ -618,60 +552,53 @@
       <div id="dUnreportedTasksList"></div>
     </div>
 
-<!-- ========================================== -->
-    <!-- SUB-VIEW 4: DELIVERY HISTORY (FILTER/SORT) -->
-    <!-- ========================================== -->
     <div id="dsub-history" class="dsub-panel hidden">
       <section class="card">
         <div class="row-gap">
           <input type="text" id="dHistorySearch" placeholder="Search file no, description, comments..." />
-          <select id="dHistorySort" style="max-width:145px;" title="Sort history">
+          <select id="dHistorySort" style="max-width:145px;">
             <option value="NEWEST">Sort: Newest</option>
             <option value="OLDEST">Sort: Oldest</option>
             <option value="OFFICE">Sort: Office A–Z</option>
             <option value="NATURE">Sort: Nature A–Z</option>
           </select>
         </div>
-
         <div class="row-gap mt-8" style="flex-wrap:wrap;">
-          <select id="dHistoryFilterStatus" style="flex:1; min-width:120px;" title="Filter by receipt status">
+          <select id="dHistoryFilterStatus" style="flex:1; min-width:120px;">
             <option value="ALL">Receipt: All</option>
             <option value="GIVEN">Receipt Given</option>
             <option value="NOT_GIVEN">No Receipt</option>
           </select>
-          <select id="dHistoryFilterOffice" style="flex:1; min-width:120px;" title="Filter by Office">
+          <select id="dHistoryFilterOffice" style="flex:1; min-width:120px;">
             <option value="ALL">Office: All</option>
           </select>
-          <select id="dHistoryFilterNature" style="flex:1; min-width:120px;" title="Filter by Nature">
+          <select id="dHistoryFilterNature" style="flex:1; min-width:120px;">
             <option value="ALL">Nature: All</option>
           </select>
         </div>
-
         <div class="row-gap mt-8" style="flex-wrap:wrap;">
-          <select id="dHistoryFilterDesig" style="flex:1; min-width:120px;" title="Filter by Designation">
+          <select id="dHistoryFilterDesig" style="flex:1; min-width:120px;">
             <option value="ALL">Designation: All</option>
           </select>
-          <select id="dHistoryFilterReceiver" style="flex:1; min-width:120px;" title="Filter by Receiver">
+          <select id="dHistoryFilterReceiver" style="flex:1; min-width:120px;">
             <option value="ALL">Receiver: All</option>
           </select>
         </div>
-
         <div class="row-gap mt-8">
-          <input type="date" id="dHistoryDateFrom" title="From date" />
-          <input type="date" id="dHistoryDateTo" title="To date" />
-          <button type="button" id="btnResetDHistoryFilters" class="btn btn-secondary btn-sm" title="Reset all filters">Reset</button>
+          <input type="date" id="dHistoryDateFrom" />
+          <input type="date" id="dHistoryDateTo" />
+          <button type="button" id="btnResetDHistoryFilters" class="btn btn-secondary btn-sm">Reset</button>
         </div>
       </section>
-
       <div class="micro-label" id="dHistoryCountLabel">0 records</div>
       <div id="dHistoryList"></div>
     </div>
+  </main>
 
-<!-- ===================================================================== -->
+  <!-- ===================================================================== -->
   <!-- MODULE 3: VHSE ADDRESS DIRECTORY, LARGE VIEW & STICKER PRINTER        -->
   <!-- ===================================================================== -->
   <main id="view-address" class="container module-view hidden no-print">
-
     <!-- Sub-Navigation: 1. Directory | 2. Queue | 3. + Add Address -->
     <div class="sub-nav-bar">
       <button type="button" class="sub-nav-btn active" data-asub="search" title="Search Schools, Offices & Individuals">
@@ -688,34 +615,29 @@
       </button>
     </div>
 
-    <!-- ========================================== -->
-    <!-- SUB-VIEW A: SEARCH DIRECTORY (FUZZY)       -->
-    <!-- ========================================== -->
+    <!-- SUB-VIEW A: SEARCH DIRECTORY -->
     <div id="asub-search" class="asub-panel">
       <section class="card">
         <div class="row-gap">
           <input type="text" id="addrSearchInput" placeholder="Name, Code, Place, PIN (handles Malayalam spelling)..." autocomplete="off" />
-          <button type="button" id="btnClearAddrSearch" class="btn btn-secondary btn-sm" title="Clear search">×</button>
+          <button type="button" id="btnClearAddrSearch" class="btn btn-secondary btn-sm">×</button>
         </div>
-        <div id="districtFilterScroll" class="chip-scroll mt-8" title="Filter by District"></div>
+        <div id="districtFilterScroll" class="chip-scroll mt-8"></div>
       </section>
 
       <div class="row-between mb-8">
         <span class="micro-label" style="margin:0;" id="addrResultCountLabel">Showing directory</span>
         <div class="row-gap">
-          <button type="button" id="btnQuickLargeView" class="btn-mini accent" title="Read queued addresses in large font for writing by hand">👁️ Large View</button>
-          <button type="button" id="btnQuickPrint" class="btn-mini active-filter" title="Open A4 Sticker Print Preview">🖨️ Print (<span id="btnPrintCount">0</span>)</button>
+          <button type="button" id="btnQuickLargeView" class="btn-mini accent">👁️ Large View</button>
+          <button type="button" id="btnQuickPrint" class="btn-mini active-filter">🖨️ Print (<span id="btnPrintCount">0</span>)</button>
         </div>
       </div>
 
       <div id="addressDirectoryList"></div>
     </div>
 
-    <!-- ========================================== -->
-    <!-- SUB-VIEW B: DISPATCH & PRINT QUEUE         -->
-    <!-- ========================================== -->
+    <!-- SUB-VIEW B: DISPATCH & PRINT QUEUE -->
     <div id="asub-queue" class="asub-panel hidden">
-      <!-- Selective / Bulk Designation Assigner -->
       <section class="card">
         <div class="row-between mb-6">
           <span class="micro-label" style="margin:0;">Assign Designation to Checked Items (<span id="checkedQueueCount">0</span>)</span>
@@ -742,20 +664,15 @@
       <div id="dispatchQueueList"></div>
     </div>
 
-    <!-- ========================================== -->
-    <!-- SUB-VIEW C: + ADD NEW ADDRESS              -->
-    <!-- ========================================== -->
+    <!-- SUB-VIEW C: + ADD NEW ADDRESS -->
     <div id="asub-add" class="asub-panel hidden">
       <section class="card">
         <div class="micro-label">Add School, Office, Institution, or Individual</div>
-
-        <!-- Designation Picker (Optional — leave blank for individuals) -->
         <div class="form-group">
           <label>To / Designation <span class="muted small">(Optional — leave blank for individuals)</span></label>
           <div id="newAddrDesigPills" class="chip-wrap mb-6"></div>
           <input type="text" id="newAddrDesig" placeholder="e.g. The Assistant Director / Camp Officer (or leave blank)" />
         </div>
-
         <div class="row-gap">
           <div class="form-group" style="flex:1;">
             <label>Code / ID <span class="muted small">(Optional)</span></label>
@@ -766,17 +683,14 @@
             <input type="text" id="newAddrSchool" placeholder="e.g. VHSE Regional Office / Sri. Rajan K" />
           </div>
         </div>
-
         <div class="form-group">
           <label>Address Line 1 (House / Building / PO / Street)</label>
           <input type="text" id="newAddrLine1" placeholder="e.g. Housing Board Building, Santhi Nagar" />
         </div>
-
         <div class="form-group">
           <label>Address Line 2 (Locality / Place / Via)</label>
           <input type="text" id="newAddrLine2" placeholder="Optional locality" />
         </div>
-
         <div class="row-gap">
           <div class="form-group" style="flex:2;">
             <label>District / City</label>
@@ -787,7 +701,6 @@
             <input type="text" id="newAddrPin" maxlength="6" placeholder="695001" />
           </div>
         </div>
-
         <div class="row-gap">
           <div class="form-group" style="flex:1;">
             <label>Head / Contact Person</label>
@@ -798,7 +711,6 @@
             <input type="text" id="newAddrPrinPhone" placeholder="Optional" />
           </div>
         </div>
-
         <div class="row-gap">
           <div class="form-group" style="flex:1;">
             <label>Clerk / Alt. Contact</label>
@@ -809,7 +721,6 @@
             <input type="text" id="newAddrClerkPhone" placeholder="Optional" />
           </div>
         </div>
-
         <div class="row-gap mt-12">
           <button type="button" id="btnSaveNewAddrPerm" class="btn btn-primary" style="flex:1;">Save Permanently & Queue</button>
           <button type="button" id="btnSaveNewAddrTemp" class="btn btn-secondary" style="flex:1;">Use Today Only</button>
@@ -819,81 +730,43 @@
   </main>
 
   <!-- ===================================================================== -->
-  <!-- MODAL: PROTECTED ADDRESS EDITOR (3-STEP WARNING GUARD)                -->
+  <!-- MODALS & PRINT OVERLAYS                                               -->
   <!-- ===================================================================== -->
+
+  <!-- Protected Address Editor Modal -->
   <div id="editAddressModal" class="modal hidden no-print">
     <div class="modal-card" style="max-width:460px; max-height:90vh; overflow-y:auto;">
       <div class="row-between">
         <h3 style="margin:0;">Address & Contacts</h3>
         <button type="button" id="btnCloseEditAddrModal" class="btn btn-secondary btn-sm">×</button>
       </div>
-
-      <!-- Warning Step 1 Banner -->
       <div id="addrLockBanner" class="no-reason-box mt-8">
         <div class="small" style="font-weight:700; color:var(--danger);">⚠️ Official Directory Record (Locked)</div>
         <div class="small">To prevent accidental edits, unlock fields only if correcting an error or adding phone numbers.</div>
         <button type="button" id="btnUnlockAddrEdit" class="btn btn-primary btn-sm mt-8">Unlock to Edit</button>
       </div>
-
       <div id="editAddrFieldsWrap" class="mt-8">
         <div class="row-gap">
-          <div class="form-group" style="flex:1;">
-            <label>Code</label>
-            <input type="text" id="edCode" disabled />
-          </div>
-          <div class="form-group" style="flex:2;">
-            <label>Default Designation</label>
-            <input type="text" id="edDesignation" disabled />
-          </div>
+          <div class="form-group" style="flex:1;"><label>Code</label><input type="text" id="edCode" disabled /></div>
+          <div class="form-group" style="flex:2;"><label>Default Designation</label><input type="text" id="edDesignation" disabled /></div>
         </div>
-        <div class="form-group">
-          <label>School / Office Name</label>
-          <input type="text" id="edSchool" disabled />
-        </div>
-        <div class="form-group">
-          <label>Address Line 1</label>
-          <input type="text" id="edLine1" disabled />
-        </div>
-        <div class="form-group">
-          <label>Address Line 2</label>
-          <input type="text" id="edLine2" disabled />
-        </div>
+        <div class="form-group"><label>School / Office Name</label><input type="text" id="edSchool" disabled /></div>
+        <div class="form-group"><label>Address Line 1</label><input type="text" id="edLine1" disabled /></div>
+        <div class="form-group"><label>Address Line 2</label><input type="text" id="edLine2" disabled /></div>
         <div class="row-gap">
-          <div class="form-group" style="flex:2;">
-            <label>District</label>
-            <input type="text" id="edDistrict" disabled />
-          </div>
-          <div class="form-group" style="flex:1;">
-            <label>PIN</label>
-            <input type="text" id="edPin" disabled />
-          </div>
+          <div class="form-group" style="flex:2;"><label>District</label><input type="text" id="edDistrict" disabled /></div>
+          <div class="form-group" style="flex:1;"><label>PIN</label><input type="text" id="edPin" disabled /></div>
         </div>
-
         <hr style="border:none; border-top:1px solid #e2e8f0; margin:12px 0;" />
-
         <div class="row-gap">
-          <div class="form-group" style="flex:1;">
-            <label>Principal Name</label>
-            <input type="text" id="edPrinName" disabled />
-          </div>
-          <div class="form-group" style="flex:1;">
-            <label>Principal Phone</label>
-            <input type="text" id="edPrinPhone" disabled />
-          </div>
+          <div class="form-group" style="flex:1;"><label>Principal Name</label><input type="text" id="edPrinName" disabled /></div>
+          <div class="form-group" style="flex:1;"><label>Principal Phone</label><input type="text" id="edPrinPhone" disabled /></div>
         </div>
         <div class="row-gap">
-          <div class="form-group" style="flex:1;">
-            <label>Clerk Name</label>
-            <input type="text" id="edClerkName" disabled />
-          </div>
-          <div class="form-group" style="flex:1;">
-            <label>Clerk Phone</label>
-            <input type="text" id="edClerkPhone" disabled />
-          </div>
+          <div class="form-group" style="flex:1;"><label>Clerk Name</label><input type="text" id="edClerkName" disabled /></div>
+          <div class="form-group" style="flex:1;"><label>Clerk Phone</label><input type="text" id="edClerkPhone" disabled /></div>
         </div>
       </div>
-
-      <!-- Warning Step 2: Diff Review Box -->
       <div id="addrDiffConfirmBox" class="no-reason-box hidden mt-12">
         <div class="small" style="font-weight:800; color:var(--danger);">⚠️ Warning: Verify Changes Before Saving</div>
         <div id="addrDiffSummary" class="small mt-6"></div>
@@ -902,29 +775,24 @@
           <button type="button" id="btnCancelAddrDiff" class="btn btn-secondary btn-sm">Back</button>
         </div>
       </div>
-
       <div id="editAddrFooterBtns" class="row-gap mt-12 hidden">
         <button type="button" id="btnReviewAddrChanges" class="btn btn-primary btn-block">Review Changes</button>
       </div>
     </div>
   </div>
 
-  <!-- ===================================================================== -->
-  <!-- MODAL: LARGE-FONT "COPY BY HAND" READER                               -->
-  <!-- ===================================================================== -->
+  <!-- Large-Font "Copy by Hand" Reader Modal -->
   <div id="largeReaderModal" class="modal hidden no-print">
     <div class="modal-card" style="max-width:540px;">
       <div class="row-between">
         <span class="badge primary" id="largeReaderIndex">1 of 1</span>
         <div class="row-gap">
-          <button type="button" id="btnFontMinus" class="btn-mini" title="Decrease font size">A−</button>
-          <button type="button" id="btnFontPlus" class="btn-mini" title="Increase font size">A+</button>
+          <button type="button" id="btnFontMinus" class="btn-mini">A−</button>
+          <button type="button" id="btnFontPlus" class="btn-mini">A+</button>
           <button type="button" id="btnCloseLargeReader" class="btn btn-secondary btn-sm">Close</button>
         </div>
       </div>
-
       <div id="largeReaderBody" class="large-reader-box mt-12" style="font-size:24px;"></div>
-
       <div class="row-between mt-12">
         <button type="button" id="btnLargePrev" class="btn btn-secondary">◀ Previous</button>
         <button type="button" id="btnLargeNext" class="btn btn-primary">Next ▶</button>
@@ -932,9 +800,7 @@
     </div>
   </div>
 
-<!-- ===================================================================== -->
-  <!-- OVERLAY: A4 STICKER SHEET PRINT PREVIEW                               -->
-  <!-- ===================================================================== -->
+  <!-- A4 Sticker Sheet Print Preview -->
   <div id="printPreviewModal" class="print-overlay hidden">
     <div class="print-controls no-print">
       <div>
@@ -942,12 +808,12 @@
         <span class="muted small" id="printSummaryLabel">0 labels</span>
       </div>
       <div class="row-gap">
-        <select id="labelGridSelect" title="Stickers per A4 sheet">
+        <select id="labelGridSelect">
           <option value="grid-2x5">10 Stickers (2 × 5)</option>
           <option value="grid-2x4">8 Stickers (2 × 4 Large)</option>
           <option value="grid-3x7">21 Stickers (3 × 7)</option>
         </select>
-        <select id="labelStartSlot" title="Skip already used stickers on a partially used sheet">
+        <select id="labelStartSlot">
           <option value="1">Start at #1</option>
           <option value="2">Start at #2</option>
           <option value="3">Start at #3</option>
@@ -967,7 +833,7 @@
           <option value="17">Start at #17</option>
           <option value="18">Start at #18</option>
         </select>
-        <select id="labelTagSelect" title="Top dispatch stamp">
+        <select id="labelTagSelect">
           <option value="">No Top Tag</option>
           <option value="SPEED POST">SPEED POST</option>
           <option value="REGISTERED POST">REGISTERED POST</option>
@@ -983,7 +849,70 @@
     <div id="printableSheet" class="a4-sheet grid-2x5"></div>
   </div>
 
-  <!-- Barcode Edit Modal (Module 1) -->
+  <!-- Group Stage 3 Reporting Modal -->
+  <div id="groupReportModal" class="modal hidden no-print">
+    <div class="modal-card" style="max-width:440px; max-height:90vh; overflow-y:auto;">
+      <div class="row-between">
+        <h3 style="margin:0;">Group Stage 3 Reporting</h3>
+        <button type="button" id="btnCloseGroupReport" class="btn btn-secondary btn-sm">×</button>
+      </div>
+      <div id="groupReportSummary" class="som-strip mt-8" style="margin-bottom:8px;"></div>
+      <div class="form-group">
+        <label>1. Given the Receipt?</label>
+        <div class="toggle-row" id="grpReceiptGivenGroup">
+          <button type="button" class="toggle-btn" data-val="Yes">Yes (Given)</button>
+          <button type="button" class="toggle-btn" data-val="No">No (Not Given)</button>
+        </div>
+      </div>
+      <div id="grpReceiptNoBox" class="no-reason-box hidden">
+        <label class="danger-text">2. Reason Why Receipt Was Not Given (Required)</label>
+        <div id="grpReceiptNoChips" class="chip-wrap mb-6"></div>
+        <input type="text" id="grpReceiptNoReason" placeholder="Enter reason..." />
+      </div>
+      <div id="grpReceiptYesFields" class="hidden">
+        <div class="form-group">
+          <label>3. Receiver's Name</label>
+          <div id="grpReceiverChips" class="chip-wrap mb-6"></div>
+          <input type="text" id="grpReceiverName" placeholder="Name of person who received receipt" />
+        </div>
+        <div class="form-group">
+          <label>4. Date & Time of Receiving</label>
+          <div class="dt-controls">
+            <input type="datetime-local" id="grpReportedDT" />
+            <button type="button" class="btn-mini" data-step-dt="grpReportedDT" data-days="-1">−1d</button>
+            <button type="button" class="btn-mini" data-step-dt="grpReportedDT" data-days="1">+1d</button>
+            <button type="button" class="btn-mini accent" data-now-dt="grpReportedDT">Now</button>
+          </div>
+        </div>
+      </div>
+      <button type="button" id="btnSaveGroupReport" class="btn btn-success btn-block mt-12">Save Group Report & Move to History</button>
+    </div>
+  </div>
+
+  <!-- Read-Only Local Delivery Report Modal -->
+  <div id="deliveryReportModal" class="modal hidden no-print">
+    <div class="modal-card" style="max-width:460px; max-height:90vh; overflow-y:auto;">
+      <div class="row-between">
+        <h3 style="margin:0;">Task Detailed Report</h3>
+        <button type="button" id="btnCloseDeliveryReport" class="btn btn-secondary btn-sm">×</button>
+      </div>
+      <div id="deliveryReportBody" class="mt-8"></div>
+      <div id="deliveryEditWarningBox" class="no-reason-box hidden mt-12">
+        <div class="small" style="font-weight:800; color:var(--danger);">⚠️ Warning: Completed History Record</div>
+        <div class="small mt-6">This task has already completed its lifecycle. Edit only if correcting a genuine mistake.</div>
+        <div class="row-gap mt-8">
+          <button type="button" id="btnConfirmUnlockHistoryEdit" class="btn btn-danger btn-sm" style="flex:1;">Yes, Unlock & Edit</button>
+          <button type="button" id="btnCancelHistoryEditWarn" class="btn btn-secondary btn-sm">Cancel</button>
+        </div>
+      </div>
+      <div id="deliveryReportFooter" class="row-between mt-12">
+        <button type="button" id="btnRequestEditHistory" class="btn btn-secondary btn-sm">✎ Edit Record</button>
+        <button type="button" id="btnCloseDeliveryReport2" class="btn btn-primary btn-sm">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Barcode Edit Modal -->
   <div id="editBarcodeModal" class="modal hidden no-print">
     <div class="modal-card">
       <h3 style="margin-top:0;">Edit or Delete Barcode</h3>
@@ -1008,83 +937,6 @@
         <button type="button" id="btnSaveSettings" class="btn btn-primary" style="flex:1;">Save & Sync</button>
         <button type="button" id="btnCloseSettings" class="btn btn-secondary">Close</button>
       </div>
-    </div>
-  </div>
-
-  <!-- ===================================================================== -->
-  <!-- MODAL: READ-ONLY LOCAL DELIVERY REPORT + INTENTIONAL EDIT GUARD       -->
-  <!-- ===================================================================== -->
-  <div id="deliveryReportModal" class="modal hidden no-print">
-    <div class="modal-card" style="max-width:460px; max-height:90vh; overflow-y:auto;">
-      <div class="row-between">
-        <h3 style="margin:0;">Task Detailed Report</h3>
-        <button type="button" id="btnCloseDeliveryReport" class="btn btn-secondary btn-sm">×</button>
-      </div>
-
-      <div id="deliveryReportBody" class="mt-8"></div>
-
-      <!-- Intentional Edit Warning Box (Hidden until Edit button is clicked) -->
-      <div id="deliveryEditWarningBox" class="no-reason-box hidden mt-12">
-        <div class="small" style="font-weight:800; color:var(--danger);">⚠️ Warning: Completed History Record</div>
-        <div class="small mt-6">This task has already completed its lifecycle. Edit only if correcting a genuine mistake.</div>
-        <div class="row-gap mt-8">
-          <button type="button" id="btnConfirmUnlockHistoryEdit" class="btn btn-danger btn-sm" style="flex:1;">Yes, Unlock & Edit</button>
-          <button type="button" id="btnCancelHistoryEditWarn" class="btn btn-secondary btn-sm">Cancel</button>
-        </div>
-      </div>
-
-      <div id="deliveryReportFooter" class="row-between mt-12">
-        <button type="button" id="btnRequestEditHistory" class="btn btn-secondary btn-sm">✎ Edit Record</button>
-        <button type="button" id="btnCloseDeliveryReport2" class="btn btn-primary btn-sm">Close</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ===================================================================== -->
-  <!-- MODAL: GROUP STAGE 3 REPORTING (FOR MULTIPLE UNREPORTED TASKS)        -->
-  <!-- ===================================================================== -->
-  <div id="groupReportModal" class="modal hidden no-print">
-    <div class="modal-card" style="max-width:440px; max-height:90vh; overflow-y:auto;">
-      <div class="row-between">
-        <h3 style="margin:0;">Group Stage 3 Reporting</h3>
-        <button type="button" id="btnCloseGroupReport" class="btn btn-secondary btn-sm">×</button>
-      </div>
-
-      <div id="groupReportSummary" class="som-strip mt-8" style="margin-bottom:8px;"></div>
-
-      <div class="form-group">
-        <label>1. Given the Receipt?</label>
-        <div class="toggle-row" id="grpReceiptGivenGroup">
-          <button type="button" class="toggle-btn" data-val="Yes">Yes (Given)</button>
-          <button type="button" class="toggle-btn" data-val="No">No (Not Given)</button>
-        </div>
-      </div>
-
-      <div id="grpReceiptNoBox" class="no-reason-box hidden">
-        <label class="danger-text">2. Reason Why Receipt Was Not Given (Required)</label>
-        <div id="grpReceiptNoChips" class="chip-wrap mb-6"></div>
-        <input type="text" id="grpReceiptNoReason" placeholder="Enter reason..." />
-      </div>
-
-      <div id="grpReceiptYesFields" class="hidden">
-        <div class="form-group">
-          <label>3. Receiver's Name</label>
-          <div id="grpReceiverChips" class="chip-wrap mb-6"></div>
-          <input type="text" id="grpReceiverName" placeholder="Name of person who received receipt" />
-        </div>
-
-        <div class="form-group">
-          <label>4. Date & Time of Receiving</label>
-          <div class="dt-controls">
-            <input type="datetime-local" id="grpReportedDT" />
-            <button type="button" class="btn-mini" data-step-dt="grpReportedDT" data-days="-1">−1d</button>
-            <button type="button" class="btn-mini" data-step-dt="grpReportedDT" data-days="1">+1d</button>
-            <button type="button" class="btn-mini accent" data-now-dt="grpReportedDT">Now</button>
-          </div>
-        </div>
-      </div>
-
-      <button type="button" id="btnSaveGroupReport" class="btn btn-success btn-block mt-12">Save Group Report & Move to History</button>
     </div>
   </div>
 
