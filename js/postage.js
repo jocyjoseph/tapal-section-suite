@@ -273,7 +273,8 @@ const PostageModule = {
     if (!code) return null;
     if (overrideType === "SPEED") return { code, type: "SPEED" };
     if (overrideType === "REG") return { code, type: "REG" };
-    if (code.startsWith("R")) return { code, type: "REG" };
+    // EL/EM (E...) = Speed Post | CL (Registered Parcel) & RL (Registered Letter) (C... / R...) = Registered
+    if (code.startsWith("C") || code.startsWith("R")) return { code, type: "REG" };
     return { code, type: "SPEED" };
   },
 
@@ -836,7 +837,6 @@ const PostageModule = {
       const type = document.getElementById("manualBarcodeType").value;
       const entered = inp.value.trim().toUpperCase();
       if (this.addBarcodeToCurrentBatch(entered, type)) {
-        // Keep exact copy of previous barcode in the box so user only changes differing digits
         this.keepPreviousBarcodeInInput(entered);
       }
     };
