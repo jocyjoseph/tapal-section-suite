@@ -1,5 +1,5 @@
 const CONFIG = {
-  DEFAULT_API_URL: "PASTE_YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE",
+  DEFAULT_API_URL: "https://script.google.com/macros/s/AKfycby0Fj-Gbhqqr3HjrjqAbNeybD9X5188dcZ_-of447a4qdOYm2E_pVRTbf5b9ZO6Bhg/exec",
   STORAGE_KEY: "tapal_suite_cache_v2",
   QUEUE_KEY: "tapal_suite_offline_queue_v1",
   API_URL_KEY: "tapal_suite_api_url",
