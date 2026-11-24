@@ -8,8 +8,7 @@ const AppStore = {
   isSyncing: false,
 
   init() {
-    // Prefer hardcoded DEFAULT_API_URL if set; otherwise use saved localStorage URL
-    const hardcoded = (CONFIG.DEFAULT_API_URL && !CONFIG.DEFAULT_API_URL.includes("PASTE_YOUR"))
+    const hardcoded = (CONFIG.DEFAULT_API_URL && !CONFIG.DEFAULT_API_URL.includes("https://script.google.com/macros/s/AKfycby0Fj-Gbhqqr3HjrjqAbNeybD9X5188dcZ_-of447a4qdOYm2E_pVRTbf5b9ZO6Bhg/exec"))
       ? CONFIG.DEFAULT_API_URL.trim()
       : "";
     const saved = localStorage.getItem(CONFIG.API_URL_KEY) || "";
@@ -33,7 +32,6 @@ const AppStore = {
     this.notify();
     this.syncAll();
 
-    // Real-time background polling every 20 seconds & on tab focus
     setInterval(() => {
       if (!document.hidden) this.syncAll(true);
     }, 20000);
@@ -89,7 +87,6 @@ const AppStore = {
       if (!silent && badge) badge.textContent = "Syncing...";
       await this.flushQueue();
 
-      // Cache-busting timestamp ensures real-time fresh read from Google Sheets
       const sep = this.apiUrl.includes("?") ? "&" : "?";
       const res = await fetch(`${this.apiUrl}${sep}action=getAllData&_t=${Date.now()}`, {
         cache: "no-store"
@@ -101,6 +98,7 @@ const AppStore = {
         this.barcodes = data.barcodes || [];
         this.deliveries = this.dedupeByKey((data.deliveries || []).map((t, idx) => ({
           Task_ID: String(t.Task_ID || `TASK-${idx + 1}`),
+          Direction: String(t.Direction || "Outward"),
           Created_DateTime: String(t.Created_DateTime || ""),
           Office_Name: String(t.Office_Name || ""),
           Designation: String(t.Designation || ""),
@@ -119,6 +117,7 @@ const AppStore = {
           Delivery_Status: String(t.Delivery_Status || ""),
           Not_Delivered_Reason: String(t.Not_Delivered_Reason || ""),
           Completed_DateTime: String(t.Completed_DateTime || ""),
+          Stage2_Receiver_Name: String(t.Stage2_Receiver_Name || ""),
           Stage2_Comments: String(t.Stage2_Comments || ""),
           Receipt_Given: String(t.Receipt_Given || ""),
           Receipt_No_Reason: String(t.Receipt_No_Reason || ""),
@@ -135,7 +134,7 @@ const AppStore = {
             Address_Line_2: String(a.Address_Line_2 || ""),
             District: String(a.District || a.District_Place || ""),
             PIN: String(a.PIN || a.PIN_Code || ""),
-            Designation: String(a.Designation || "The Principal"),
+            Designation: String(a.Designation || ""),
             Principal_Name: String(a.Principal_Name || ""),
             Principal_Phone: String(a.Principal_Phone || ""),
             Clerk_Name: String(a.Clerk_Name || ""),
@@ -181,7 +180,6 @@ const AppStore = {
         badge.textContent = "Saved ✓";
         badge.className = "badge online";
       }
-      // Pull fresh state from Google Sheets shortly after write to keep history & SOMs in sync
       setTimeout(() => this.syncAll(true), 1500);
     } catch (e) {
       const q = JSON.parse(localStorage.getItem(CONFIG.QUEUE_KEY) || "[]");
@@ -291,7 +289,6 @@ function showToast(msg) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  // Ensure Settings modal is strictly closed on load
   const settingsModal = document.getElementById("settingsModal");
   if (settingsModal) settingsModal.classList.add("hidden");
 
@@ -305,7 +302,6 @@ document.addEventListener("DOMContentLoaded", () => {
       const viewEl = document.getElementById(`view-${target}`);
       if (viewEl) viewEl.classList.remove("hidden");
 
-      // Refresh Address Directory when switching to Address tab
       if (target === "address" && typeof AddressModule !== "undefined") {
         AddressModule.renderDistrictFilters();
         AddressModule.renderDirectory();
