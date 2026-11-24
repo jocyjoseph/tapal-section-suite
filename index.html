@@ -8,6 +8,7 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="style.css" />
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 </head>
 <body>
   <!-- Top App Bar -->
@@ -107,20 +108,25 @@
             </div>
           </div>
           <div class="form-group">
-            <label>Scan Barcodes</label>
+            <div class="row-between mb-6">
+              <label style="margin:0;">Barcodes (Import LoMag or Manual)</label>
+              <div class="row-gap">
+                <input type="file" id="lomagFileInput" accept=".xls,.xlsx,.csv,.txt" class="hidden" />
+                <button type="button" id="btnImportLoMag" class="btn-mini accent" title="Import barcodes from LoMag .xls / .xlsx export">📂 Import LoMag (.xls)</button>
+                <button type="button" id="btnToggleBatchScanner" class="btn-mini" title="Open camera scanner">
+                  <span id="scanBtnText">📷 Scan</span>
+                </button>
+              </div>
+            </div>
             <div class="scanner-compact">
               <div class="row-gap">
-                <button type="button" id="btnToggleBatchScanner" class="btn btn-primary btn-sm btn-icon">
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M9.5 6.5v3h-3v-3h3M11 5H5v6h6V5zm-1.5 9.5v3h-3v-3h3M11 13H5v6h6v-6zm6.5-6.5v3h-3v-3h3M19 5h-6v6h6V5zm-6 8h1.5v1.5H13V13zm1.5 1.5H16V16h-1.5v-1.5zM16 13h1.5v1.5H16V13zm-3 3h1.5v1.5H13V16zm1.5 1.5H16V19h-1.5v-1.5zM16 16h1.5v1.5H16V16zm1.5-1.5H19V16h-1.5v-1.5zm0 3H19V19h-1.5v-1.5z"/></svg>
-                  <span id="scanBtnText">Scan</span>
-                </button>
-                <input type="text" id="manualBarcodeText" placeholder="e.g. CL502656420IN" maxlength="13" />
+                <input type="text" id="manualBarcodeText" placeholder="e.g. EL590202824IN" maxlength="13" />
                 <select id="manualBarcodeType" style="max-width:96px;">
                   <option value="AUTO">Auto</option>
                   <option value="SPEED">Speed</option>
                   <option value="REG">Registered</option>
                 </select>
-                <button type="button" id="btnAddManualBarcode" class="btn btn-secondary btn-sm">+</button>
+                <button type="button" id="btnAddManualBarcode" class="btn btn-primary btn-sm">+</button>
               </div>
               <div id="qrReaderBox" class="qr-box hidden"></div>
               <div id="scannedBarcodeList" class="chip-wrap mt-6"></div>
@@ -599,7 +605,6 @@
   <!-- MODULE 3: ADDRESS DIRECTORY, LARGE VIEW & STICKER PRINTER             -->
   <!-- ===================================================================== -->
   <main id="view-address" class="container module-view hidden no-print">
-    <!-- Sub-Navigation: 1. Directory | 2. Queue | 3. + Add Address -->
     <div class="sub-nav-bar">
       <button type="button" class="sub-nav-btn active" data-asub="search" title="Search Schools, Offices & Individuals">
         <svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
@@ -615,7 +620,6 @@
       </button>
     </div>
 
-    <!-- SUB-VIEW A: SEARCH DIRECTORY -->
     <div id="asub-search" class="asub-panel">
       <section class="card">
         <div class="row-gap">
@@ -636,7 +640,6 @@
       <div id="addressDirectoryList"></div>
     </div>
 
-    <!-- SUB-VIEW B: DISPATCH & PRINT QUEUE -->
     <div id="asub-queue" class="asub-panel hidden">
       <section class="card">
         <div class="row-between mb-6">
@@ -664,7 +667,6 @@
       <div id="dispatchQueueList"></div>
     </div>
 
-    <!-- SUB-VIEW C: + ADD NEW ADDRESS (PURE PHYSICAL ADDRESS + CONTACTS) -->
     <div id="asub-add" class="asub-panel hidden">
       <section class="card">
         <div class="micro-label">Add School, Office, Institution, or Individual Address</div>
@@ -728,7 +730,6 @@
   <!-- MODALS & PRINT OVERLAYS                                               -->
   <!-- ===================================================================== -->
 
-  <!-- Protected Address & Contacts Editor Modal (Pure Physical Address) -->
   <div id="editAddressModal" class="modal hidden no-print">
     <div class="modal-card" style="max-width:460px; max-height:90vh; overflow-y:auto;">
       <div class="row-between">
@@ -775,7 +776,6 @@
     </div>
   </div>
 
-  <!-- Large-Font "Copy by Hand" Reader Modal -->
   <div id="largeReaderModal" class="modal hidden no-print">
     <div class="modal-card" style="max-width:540px;">
       <div class="row-between">
@@ -794,7 +794,6 @@
     </div>
   </div>
 
-  <!-- A4 Sticker Sheet Print Preview -->
   <div id="printPreviewModal" class="print-overlay hidden">
     <div class="print-controls no-print">
       <div>
@@ -843,7 +842,6 @@
     <div id="printableSheet" class="a4-sheet grid-2x5"></div>
   </div>
 
-  <!-- Group Stage 3 Reporting Modal -->
   <div id="groupReportModal" class="modal hidden no-print">
     <div class="modal-card" style="max-width:440px; max-height:90vh; overflow-y:auto;">
       <div class="row-between">
@@ -883,7 +881,6 @@
     </div>
   </div>
 
-  <!-- Read-Only Local Delivery Report Modal -->
   <div id="deliveryReportModal" class="modal hidden no-print">
     <div class="modal-card" style="max-width:460px; max-height:90vh; overflow-y:auto;">
       <div class="row-between">
@@ -906,7 +903,6 @@
     </div>
   </div>
 
-  <!-- Barcode Edit Modal -->
   <div id="editBarcodeModal" class="modal hidden no-print">
     <div class="modal-card">
       <h3 style="margin-top:0;">Edit or Delete Barcode</h3>
@@ -922,7 +918,6 @@
     </div>
   </div>
 
-  <!-- Settings Modal -->
   <div id="settingsModal" class="modal hidden no-print">
     <div class="modal-card">
       <h3>Google Sheets Connection</h3>
