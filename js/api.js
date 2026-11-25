@@ -112,6 +112,46 @@ const AppStore = {
     });
   },
 
+  normalizeDeliveryRow(t, idx = 0) {
+    return {
+      Task_ID: String(t.Task_ID || `TASK-${idx + 1}`),
+      Direction: String(t.Direction || "Outward"),
+      Created_DateTime: String(t.Created_DateTime || ""),
+      Office_Name: String(t.Office_Name || ""),
+      Designation: String(t.Designation || ""),
+      Section: String(t.Section || ""),
+      Nature: String(t.Nature || "File"),
+      Item_Count: Number(t.Item_Count || 1),
+      Nature_Mode: String(t.Nature_Mode || "Same"),
+      Items_JSON: typeof t.Items_JSON === "string" ? t.Items_JSON : JSON.stringify(t.Items_JSON || []),
+      Items_Summary: String(t.Items_Summary || ""),
+      Description: String(t.Description || ""),
+      Has_Attachments: String(t.Has_Attachments || "No"),
+      Attachment_Count: Number(t.Attachment_Count || 0),
+      Attachments_JSON: typeof t.Attachments_JSON === "string" ? t.Attachments_JSON : JSON.stringify(t.Attachments_JSON || []),
+      Planned_Delivery_DT: String(t.Planned_Delivery_DT || ""),
+      Urgency: String(t.Urgency || "Normal"),
+      Delivery_Status: String(t.Delivery_Status || ""),
+      Not_Delivered_Reason: String(t.Not_Delivered_Reason || ""),
+      Completed_DateTime: String(t.Completed_DateTime || ""),
+      Stage2_Receiver_Name: String(t.Stage2_Receiver_Name || ""),
+      Stage2_Comments: String(t.Stage2_Comments || ""),
+      Receipt_Given: String(t.Receipt_Given || ""),
+      Receipt_No_Reason: String(t.Receipt_No_Reason || ""),
+      Receiver_Name: String(t.Receiver_Name || ""),
+      Reported_DateTime: String(t.Reported_DateTime || ""),
+      Enquirer_Name: String(t.Enquirer_Name || ""),
+      Enquiry_Text: String(t.Enquiry_Text || ""),
+      Reply_Text: String(t.Reply_Text || ""),
+      Reply_DateTime: String(t.Reply_DateTime || ""),
+      Report_Status: String(t.Report_Status || ""),
+      Report_Method: String(t.Report_Method || ""),
+      RoundTrip_Purpose: String(t.RoundTrip_Purpose || ""),
+      RoundTrip_Stops_JSON: typeof t.RoundTrip_Stops_JSON === "string" ? t.RoundTrip_Stops_JSON : JSON.stringify(t.RoundTrip_Stops_JSON || []),
+      RoundTrip_Custody: String(t.RoundTrip_Custody || "With Me / In Transit")
+    };
+  },
+
   async syncAll(silent = false) {
     const badge = document.getElementById("syncStatus");
     if (!this.apiUrl || this.apiUrl.includes("PASTE_YOUR")) {
@@ -129,7 +169,6 @@ const AppStore = {
       if (!silent && badge) badge.textContent = "Syncing...";
       await this.flushQueue();
 
-      // Re-push any unconfirmed local records before fetching
       const reg = this.getUnsyncedRegistry();
       for (const bId of Object.keys(reg.batches)) {
         await this.sendPostRaw("saveBatch", reg.batches[bId]);
@@ -156,14 +195,12 @@ const AppStore = {
           const id = String(b.Batch_ID || "").trim();
           if (id && !reg.deletedBatches.includes(id)) {
             remoteBatchMap.set(id, b);
-            // Confirmed present in Google Sheets -> clear from pending registry
             if (reg.batches[id]) delete reg.batches[id];
           }
         });
         reg.deletedBatches = reg.deletedBatches.filter(id =>
           (data.batches || []).some(b => String(b.Batch_ID || "").trim() === id)
         );
-        // Merge any local batches not yet returned by Google Sheets so reload never wipes them
         Object.keys(reg.batches).forEach(id => {
           remoteBatchMap.set(id, reg.batches[id]);
         });
@@ -173,36 +210,10 @@ const AppStore = {
 
         const remoteDelivMap = new Map();
         (data.deliveries || []).forEach((t, idx) => {
-          const id = String(t.Task_ID || `TASK-${idx + 1}`).trim();
+          const norm = this.normalizeDeliveryRow(t, idx);
+          const id = norm.Task_ID.trim();
           if (id && !reg.deletedDeliveries.includes(id)) {
-            remoteDelivMap.set(id, {
-              Task_ID: id,
-              Direction: String(t.Direction || "Outward"),
-              Created_DateTime: String(t.Created_DateTime || ""),
-              Office_Name: String(t.Office_Name || ""),
-              Designation: String(t.Designation || ""),
-              Section: String(t.Section || ""),
-              Nature: String(t.Nature || "File"),
-              Item_Count: Number(t.Item_Count || 1),
-              Nature_Mode: String(t.Nature_Mode || "Same"),
-              Items_JSON: typeof t.Items_JSON === "string" ? t.Items_JSON : JSON.stringify(t.Items_JSON || []),
-              Items_Summary: String(t.Items_Summary || ""),
-              Description: String(t.Description || ""),
-              Has_Attachments: String(t.Has_Attachments || "No"),
-              Attachment_Count: Number(t.Attachment_Count || 0),
-              Attachments_JSON: typeof t.Attachments_JSON === "string" ? t.Attachments_JSON : JSON.stringify(t.Attachments_JSON || []),
-              Planned_Delivery_DT: String(t.Planned_Delivery_DT || ""),
-              Urgency: String(t.Urgency || "Normal"),
-              Delivery_Status: String(t.Delivery_Status || ""),
-              Not_Delivered_Reason: String(t.Not_Delivered_Reason || ""),
-              Completed_DateTime: String(t.Completed_DateTime || ""),
-              Stage2_Receiver_Name: String(t.Stage2_Receiver_Name || ""),
-              Stage2_Comments: String(t.Stage2_Comments || ""),
-              Receipt_Given: String(t.Receipt_Given || ""),
-              Receipt_No_Reason: String(t.Receipt_No_Reason || ""),
-              Receiver_Name: String(t.Receiver_Name || ""),
-              Reported_DateTime: String(t.Reported_DateTime || "")
-            });
+            remoteDelivMap.set(id, norm);
             if (reg.deliveries[id]) delete reg.deliveries[id];
           }
         });
@@ -210,7 +221,7 @@ const AppStore = {
           (data.deliveries || []).some(t => String(t.Task_ID || "").trim() === id)
         );
         Object.keys(reg.deliveries).forEach(id => {
-          remoteDelivMap.set(id, reg.deliveries[id]);
+          remoteDelivMap.set(id, this.normalizeDeliveryRow(reg.deliveries[id]));
         });
         this.deliveries = this.dedupeByKey(Array.from(remoteDelivMap.values()), "Task_ID");
 
