@@ -142,10 +142,13 @@ const AppStore = {
       Reported_DateTime: String(t.Reported_DateTime || ""),
       Enquirer_Name: String(t.Enquirer_Name || ""),
       Enquiry_Text: String(t.Enquiry_Text || ""),
+      Enquiries_JSON: typeof t.Enquiries_JSON === "string" ? t.Enquiries_JSON : JSON.stringify(t.Enquiries_JSON || []),
+      Respondent_Name: String(t.Respondent_Name || ""),
       Reply_Text: String(t.Reply_Text || ""),
       Reply_DateTime: String(t.Reply_DateTime || ""),
       Report_Status: String(t.Report_Status || ""),
       Report_Method: String(t.Report_Method || ""),
+      File_Given_By: String(t.File_Given_By || ""),
       RoundTrip_Purpose: String(t.RoundTrip_Purpose || ""),
       RoundTrip_Stops_JSON: typeof t.RoundTrip_Stops_JSON === "string" ? t.RoundTrip_Stops_JSON : JSON.stringify(t.RoundTrip_Stops_JSON || []),
       RoundTrip_Custody: String(t.RoundTrip_Custody || "With Me / In Transit")
