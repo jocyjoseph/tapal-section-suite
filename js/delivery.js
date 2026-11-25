@@ -37,7 +37,7 @@ const DeliveryModule = {
       return Boolean(t.Reply_Text) && t.Report_Status === "Reported";
     }
     if (dir === "Round-Trip") {
-      return t.Delivery_Status === "Returned" && Boolean(t.Receiver_Name);
+      return t.Delivery_Status === "Returned" && Boolean(t.Receipt_Given);
     }
     return t.Delivery_Status === "Delivered" && Boolean(t.Receipt_Given);
   },
@@ -73,45 +73,73 @@ const DeliveryModule = {
       ? `${dirTitles[dir]}: ${this.currentTask.Office_Name || "Task"}`
       : `New ${dirTitles[dir]}`;
 
-    // Stage 1 labels & field groups
+    // Stage 1 layout & labels
+    document.getElementById("dEnquiryStage1Wrap").classList.toggle("hidden", !isEnquiry);
+    document.getElementById("dDocumentStage1Wrap").classList.toggle("hidden", isEnquiry);
+
     if (isEnquiry) {
-      document.getElementById("dStage1Tag").textContent = "STAGE 1 • ENQUIRY REQUEST";
+      document.getElementById("dStage1Tag").textContent = "STAGE 1 • ENQUIRY DETAILS";
       document.getElementById("lblDCreatedDT").textContent = "1. Date & Time";
-      document.getElementById("lblDOfficeName").textContent = "3. To Office";
+      document.getElementById("lblDUrgency").textContent = "5. Urgency Scale";
+    } else if (isRoundTrip) {
+      document.getElementById("dStage1Tag").textContent = "STAGE 1 • FILE PREPARATION";
+      document.getElementById("lblDCreatedDT").textContent = "1. Date & Time";
+      document.getElementById("dRtFileGivenByGroup").classList.remove("hidden");
+      document.getElementById("dOfficeNameGroup").classList.add("hidden");
+      document.getElementById("dDesignationGroup").classList.add("hidden");
+      document.getElementById("lblDSection").textContent = "3. Section";
+      document.getElementById("lblDNature").textContent = "4. Nature of File / Document";
+      document.getElementById("lblDItemCount").textContent = "5. No. of File / Document";
+      document.getElementById("lblDItemNumbers").textContent = "6. File Number";
+      document.getElementById("lblDDescription").innerHTML = `7. Description <span class="muted small">(Optional)</span>`;
+      document.getElementById("lblDAttachments").textContent = "8. Attachments?";
+      document.getElementById("dPlannedDTGroup").classList.add("hidden");
+      document.getElementById("lblDUrgency").textContent = "9. Urgency Scale";
     } else if (isInward) {
       document.getElementById("dStage1Tag").textContent = "STAGE 1 • COLLECTION DETAILS";
       document.getElementById("lblDCreatedDT").textContent = "1. Collection Date & Time";
+      document.getElementById("dRtFileGivenByGroup").classList.add("hidden");
+      document.getElementById("dOfficeNameGroup").classList.remove("hidden");
+      document.getElementById("dDesignationGroup").classList.remove("hidden");
       document.getElementById("lblDOfficeName").textContent = "2. From Office Name";
+      document.getElementById("lblDDesignation").textContent = "3. Designation";
       document.getElementById("lblDSection").textContent = "4. Receiving Section (Our Office)";
-    } else if (isRoundTrip) {
-      document.getElementById("dStage1Tag").textContent = "STAGE 1 • DOCUMENT & DESTINATION";
-      document.getElementById("lblDCreatedDT").textContent = "1. Date & Time";
-      document.getElementById("lblDOfficeName").textContent = "2. First Office Name";
-      document.getElementById("lblDSection").textContent = "4. Originating Section";
+      document.getElementById("lblDNature").textContent = "5. Nature of File / Document";
+      document.getElementById("lblDItemCount").textContent = "6. No. of File / Document";
+      document.getElementById("lblDItemNumbers").textContent = "7. File Number";
+      document.getElementById("lblDDescription").innerHTML = `8. Description <span class="muted small">(Optional)</span>`;
+      document.getElementById("lblDAttachments").textContent = "9. Attachments?";
+      document.getElementById("dPlannedDTGroup").classList.add("hidden");
+      document.getElementById("lblDUrgency").textContent = "10. Urgency Scale";
     } else {
       document.getElementById("dStage1Tag").textContent = "STAGE 1 • DELIVERY DETAILS";
       document.getElementById("lblDCreatedDT").textContent = "1. Date & Time";
+      document.getElementById("dRtFileGivenByGroup").classList.add("hidden");
+      document.getElementById("dOfficeNameGroup").classList.remove("hidden");
+      document.getElementById("dDesignationGroup").classList.remove("hidden");
       document.getElementById("lblDOfficeName").textContent = "2. To Office Name";
+      document.getElementById("lblDDesignation").textContent = "3. Designation";
       document.getElementById("lblDSection").textContent = "4. Section";
+      document.getElementById("lblDNature").textContent = "5. Nature of File / Document";
+      document.getElementById("lblDItemCount").textContent = "6. No. of File / Document";
+      document.getElementById("lblDItemNumbers").textContent = "7. File Number";
+      document.getElementById("lblDDescription").innerHTML = `8. Description <span class="muted small">(Optional)</span>`;
+      document.getElementById("lblDAttachments").textContent = "9. Attachments?";
+      document.getElementById("dPlannedDTGroup").classList.remove("hidden");
+      document.getElementById("lblDUrgency").textContent = "11. Urgency Scale";
     }
 
-    document.getElementById("dEnquirerGroup").classList.toggle("hidden", !isEnquiry);
-    document.getElementById("dEnquiryTextGroup").classList.toggle("hidden", !isEnquiry);
-    document.getElementById("dDocumentFieldsWrap").classList.toggle("hidden", isEnquiry);
-    document.getElementById("dRoundTripPurposeGroup").classList.toggle("hidden", !isRoundTrip);
-    document.getElementById("dPlannedDTGroup").classList.toggle("hidden", !isOutward);
-
-    // Stage 2 visibility & labels
+    // Stage 2 layout & labels
     document.getElementById("dStage2StandardWrap").classList.toggle("hidden", isEnquiry || isRoundTrip);
     document.getElementById("dStage2EnquiryWrap").classList.toggle("hidden", !isEnquiry);
     document.getElementById("dStage2RoundTripWrap").classList.toggle("hidden", !isRoundTrip);
 
     if (isEnquiry) {
-      document.getElementById("dStage2Tag").textContent = "STAGE 2 • REPLY & REPORTING";
-      document.getElementById("btnSaveDStage2").textContent = "Save Reply & Report";
+      document.getElementById("dStage2Tag").textContent = "STAGE 2 • REPLY DETAILS";
+      document.getElementById("btnSaveDStage2").textContent = "Save Reply & Proceed to Reporting";
     } else if (isRoundTrip) {
-      document.getElementById("dStage2Tag").textContent = "STAGE 2 • OFFICE MOVEMENT & PROCESSING";
-      document.getElementById("btnSaveDStage2").textContent = "Save Office Movement";
+      document.getElementById("dStage2Tag").textContent = "STAGE 2 • OFFICE DETAILS";
+      document.getElementById("btnSaveDStage2").textContent = "Save Office Details";
     } else if (isInward) {
       document.getElementById("dStage2Tag").textContent = "STAGE 2 • HANDOVER TO OUR OFFICE";
       document.getElementById("lblDCompletedDT").textContent = "3. Handover Date & Time";
@@ -126,14 +154,18 @@ const DeliveryModule = {
       document.getElementById("btnSaveDStage2").textContent = "Save Stage 2";
     }
 
-    // Stage 3 visibility & labels (Shown for Outward Delivery & Round-Trip; Hidden for Collection & Enquiry)
-    document.getElementById("dCard3").classList.toggle("hidden", isInward || isEnquiry);
+    // Stage 3 layout & labels (Shown for Outward Delivery, Enquiry, and Round-Trip; Hidden only for Collection)
+    document.getElementById("dCard3").classList.toggle("hidden", isInward);
     document.getElementById("dStage3OutwardWrap").classList.toggle("hidden", !isOutward);
+    document.getElementById("dStage3EnquiryWrap").classList.toggle("hidden", !isEnquiry);
     document.getElementById("dStage3RoundTripWrap").classList.toggle("hidden", !isRoundTrip);
 
-    if (isRoundTrip) {
-      document.getElementById("dStage3Tag").textContent = "STAGE 3 • RETURN TO OUR OFFICE";
-      document.getElementById("btnSaveDStage3").textContent = "Complete Round-Trip & Move to History";
+    if (isEnquiry) {
+      document.getElementById("dStage3Tag").textContent = "STAGE 3 • REPORTING TO ENQUIRER";
+      document.getElementById("btnSaveDStage3").textContent = "Save Reporting Status";
+    } else if (isRoundTrip) {
+      document.getElementById("dStage3Tag").textContent = "STAGE 3 • BACK TO OFFICE";
+      document.getElementById("btnSaveDStage3").textContent = "Save Stage 3 & Move to History";
     } else {
       document.getElementById("dStage3Tag").textContent = "STAGE 3 • RECEIPT REPORTING";
       document.getElementById("btnSaveDStage3").textContent = "Save Stage 3 & Move to History";
@@ -177,12 +209,15 @@ const DeliveryModule = {
       Reported_DateTime: "",
       Enquirer_Name: "",
       Enquiry_Text: "",
+      Enquiries_JSON: JSON.stringify([{ question: "" }]),
+      Respondent_Name: "",
       Reply_Text: "",
       Reply_DateTime: "",
       Report_Status: "",
       Report_Method: "",
+      File_Given_By: "",
       RoundTrip_Purpose: "",
-      RoundTrip_Stops_JSON: JSON.stringify([{ office: "", action: "Signed", dt: DateTimeHelper.nowLocalISO(), officer: "" }]),
+      RoundTrip_Stops_JSON: JSON.stringify([{ office: "", designation: "", section: "", action: "", dt: DateTimeHelper.nowLocalISO(), connectNext: "No" }]),
       RoundTrip_Custody: "With Me / In Transit"
     };
 
@@ -207,30 +242,30 @@ const DeliveryModule = {
   openStage(stageNum) {
     this.allExpanded = false;
     document.getElementById("btnToggleExpandAllDelivery").textContent = "Expand All";
+    const dir = this.currentTask.Direction || "Outward";
 
     if (stageNum === 1) {
       const inp = document.getElementById("dCreatedDT");
-      if (!inp.value) {
-        const stored = DateTimeHelper.toDateTimeLocalValue(this.currentTask.Created_DateTime);
-        inp.value = stored || DateTimeHelper.nowLocalISO();
-      }
+      if (!inp.value) inp.value = DateTimeHelper.toDateTimeLocalValue(this.currentTask.Created_DateTime) || DateTimeHelper.nowLocalISO();
       inp.max = DateTimeHelper.nowLocalISO();
     }
     if (stageNum === 2) {
-      const dir = this.currentTask.Direction || "Outward";
       if (dir === "Enquiry") {
         const rInp = document.getElementById("dReplyDT");
         if (!rInp.value) rInp.value = DateTimeHelper.toDateTimeLocalValue(this.currentTask.Reply_DateTime) || DateTimeHelper.nowLocalISO();
         rInp.max = DateTimeHelper.nowLocalISO();
-      } else {
+      } else if (dir !== "Round-Trip") {
         const inp = document.getElementById("dCompletedDT");
         if (!inp.value) inp.value = DateTimeHelper.toDateTimeLocalValue(this.currentTask.Completed_DateTime) || DateTimeHelper.nowLocalISO();
         inp.max = DateTimeHelper.nowLocalISO();
       }
     }
     if (stageNum === 3) {
-      const dir = this.currentTask.Direction || "Outward";
-      if (dir === "Round-Trip") {
+      if (dir === "Enquiry") {
+        const repInp = document.getElementById("dEnquiryReportedDT");
+        if (!repInp.value) repInp.value = DateTimeHelper.toDateTimeLocalValue(this.currentTask.Reported_DateTime) || DateTimeHelper.nowLocalISO();
+        repInp.max = DateTimeHelper.nowLocalISO();
+      } else if (dir === "Round-Trip") {
         const rtInp = document.getElementById("dRtReturnDT");
         if (!rtInp.value) rtInp.value = DateTimeHelper.toDateTimeLocalValue(this.currentTask.Reported_DateTime) || DateTimeHelper.nowLocalISO();
         rtInp.max = DateTimeHelper.nowLocalISO();
@@ -261,7 +296,7 @@ const DeliveryModule = {
     this.allExpanded = !this.allExpanded;
     document.getElementById("btnToggleExpandAllDelivery").textContent = this.allExpanded ? "Collapse All" : "Expand All";
     if (this.allExpanded) {
-      ["dCreatedDT", "dCompletedDT", "dReportedDT", "dReplyDT", "dRtReturnDT"].forEach(id => {
+      ["dCreatedDT", "dCompletedDT", "dReportedDT", "dReplyDT", "dEnquiryReportedDT", "dRtReturnDT"].forEach(id => {
         const inp = document.getElementById(id);
         if (inp && !inp.value) inp.value = DateTimeHelper.nowLocalISO();
         if (inp) inp.max = DateTimeHelper.nowLocalISO();
@@ -278,19 +313,25 @@ const DeliveryModule = {
     this.applyDirectionUI(dir);
 
     document.getElementById("dCreatedDT").value = DateTimeHelper.toDateTimeLocalValue(t.Created_DateTime);
+
+    // Enquiry Stage 1
+    document.getElementById("dEnquirerName").value = t.Enquirer_Name || "";
+    document.getElementById("dEnquiryOfficeName").value = t.Office_Name || "";
+    let enqList = [];
+    try { enqList = JSON.parse(t.Enquiries_JSON || "[]"); } catch (e) {}
+    if (!enqList.length) {
+      enqList = t.Enquiry_Text ? [{ question: t.Enquiry_Text }] : [{ question: "" }];
+    }
+    this.renderDynamicEnquiries(enqList);
+
+    // Document Stage 1
+    document.getElementById("dFileGivenBy").value = t.File_Given_By || "";
     document.getElementById("dOfficeName").value = t.Office_Name || "";
     document.getElementById("dDesignation").value = t.Designation || "";
     document.getElementById("dSection").value = t.Section || "";
     document.getElementById("dNature").value = t.Nature || "File";
     document.getElementById("dItemCount").value = t.Item_Count || 1;
     document.getElementById("dDescription").value = t.Description || "";
-
-    // Enquiry Stage 1 fields
-    document.getElementById("dEnquirerName").value = t.Enquirer_Name || "";
-    document.getElementById("dEnquiryText").value = t.Enquiry_Text || "";
-
-    // Round-Trip Stage 1 purpose
-    document.getElementById("dRoundTripPurpose").value = t.RoundTrip_Purpose || "";
 
     let items = [];
     try { items = JSON.parse(t.Items_JSON || "[]"); } catch (e) {}
@@ -315,22 +356,18 @@ const DeliveryModule = {
     document.getElementById("dStage2ReceiverName").value = t.Stage2_Receiver_Name || "";
     document.getElementById("dStage2Comments").value = t.Stage2_Comments || "";
 
-    // Stage 2B: Enquiry Reply & Report
+    // Stage 2B: Enquiry Reply
     document.getElementById("dReplyText").value = t.Reply_Text || "";
+    document.getElementById("dRespondentName").value = t.Respondent_Name || "";
     document.getElementById("dReplyDT").value = DateTimeHelper.toDateTimeLocalValue(t.Reply_DateTime);
-    this.setToggle("dEnquiryReportStatusGroup", t.Report_Status || "");
-    document.getElementById("dEnquiryReportedDetails").classList.toggle("hidden", t.Report_Status !== "Reported");
-    document.getElementById("dEnquiryReportedDT").value = DateTimeHelper.toDateTimeLocalValue(t.Reported_DateTime);
-    document.getElementById("dReportMethodInput").value = t.Report_Method || "";
-    document.getElementById("dEnquiryComments").value = t.Stage2_Comments || "";
 
-    // Stage 2C: Round-Trip Stops
+    // Stage 2C: Round-Trip Office Stops
     let stops = [];
     try { stops = JSON.parse(t.RoundTrip_Stops_JSON || "[]"); } catch (e) {}
-    if (!stops.length) stops = [{ office: t.Office_Name || "", action: "Signed", dt: DateTimeHelper.nowLocalISO(), officer: "" }];
+    if (!stops.length) {
+      stops = [{ office: "", designation: "", section: "", action: "", dt: DateTimeHelper.nowLocalISO(), connectNext: "No" }];
+    }
     this.renderRoundTripStops(stops);
-    this.setToggle("dRoundTripCustodyGroup", t.RoundTrip_Custody || "With Me / In Transit");
-    document.getElementById("dRoundTripComments").value = t.Stage2_Comments || "";
 
     // Stage 3A: Outward Receipt
     this.setToggle("dReceiptGivenGroup", t.Receipt_Given || "");
@@ -340,56 +377,120 @@ const DeliveryModule = {
     document.getElementById("dReceiverName").value = t.Receiver_Name || "";
     document.getElementById("dReportedDT").value = DateTimeHelper.toDateTimeLocalValue(t.Reported_DateTime);
 
-    // Stage 3B: Round-Trip Return
-    document.getElementById("dRtReturnReceiverName").value = t.Receiver_Name || "";
+    // Stage 3B: Enquiry Reporting
+    this.setToggle("dEnquiryReportStatusGroup", t.Report_Status || "");
+    document.getElementById("dEnquiryReportedDetails").classList.toggle("hidden", t.Report_Status !== "Reported");
+    document.getElementById("dEnquiryReportedDT").value = DateTimeHelper.toDateTimeLocalValue(t.Reported_DateTime);
+    document.getElementById("dReportMethodInput").value = t.Report_Method || "";
+    document.getElementById("dEnquiryComments").value = t.Stage2_Comments || "";
+
+    // Stage 3C: Round-Trip Back to Office
+    document.getElementById("dRtDocReceiverName").value = t.Stage2_Receiver_Name || "";
     document.getElementById("dRtReturnDT").value = DateTimeHelper.toDateTimeLocalValue(t.Reported_DateTime);
+    this.setToggle("dRtReceiptGivenGroup", t.Receipt_Given || "");
+    document.getElementById("dRtReceiptNoBox").classList.toggle("hidden", t.Receipt_Given !== "No");
+    document.getElementById("dRtReceiptYesFields").classList.toggle("hidden", t.Receipt_Given !== "Yes");
+    document.getElementById("dRtReceiptNoReason").value = t.Receipt_No_Reason || "";
+    document.getElementById("dRtReceiptReceiverName").value = t.Receiver_Name || "";
+    document.getElementById("dRtComments").value = t.Stage2_Comments || "";
 
     this.updateStageSummaries();
     this.refreshLearnedOptions();
   },
 
   // =========================================================
-  // ROUND-TRIP MULTI-OFFICE STOPS RENDERER
+  // ENQUIRY DYNAMIC QUESTIONS RENDERER (+ Add Enquiry)
   // =========================================================
-  renderRoundTripStops(stops = []) {
-    const wrap = document.getElementById("dRoundTripStopsList");
-    wrap.innerHTML = stops.map((st, idx) => `
-      <div class="dynamic-schema-box mb-6 rt-stop-card">
-        <div class="row-between mb-6">
-          <span class="badge primary">Stop #${idx + 1}</span>
-          ${stops.length > 1 ? `<button type="button" class="btn-mini" data-rm-rtstop="${idx}">× Remove</button>` : ""}
-        </div>
-        <div class="form-group" style="margin-top:0;">
-          <label>Office Visited</label>
-          <input type="text" class="rt-stop-office" list="dOfficeList" value="${st.office || ""}" placeholder="Office name..." />
-        </div>
-        <div class="row-gap">
-          <div class="form-group" style="flex:1; margin-top:4px;">
-            <label>Action / Status</label>
-            <input type="text" class="rt-stop-action" value="${st.action || ""}" placeholder="Signed / Forwarded / Pending..." />
-          </div>
-          <div class="form-group" style="flex:1; margin-top:4px;">
-            <label>Officer / Clerk Met</label>
-            <input type="text" class="rt-stop-officer" value="${st.officer || ""}" placeholder="Optional..." />
-          </div>
-        </div>
-        <div class="form-group" style="margin-top:4px;">
-          <label>Date & Time</label>
-          <input type="datetime-local" class="rt-stop-dt" value="${DateTimeHelper.toDateTimeLocalValue(st.dt) || DateTimeHelper.nowLocalISO()}" />
-        </div>
+  renderDynamicEnquiries(enquiries = []) {
+    const list = enquiries.length ? enquiries : [{ question: "" }];
+    const wrap = document.getElementById("dDynamicEnquiriesWrap");
+    wrap.innerHTML = list.map((item, idx) => `
+      <div class="dynamic-item-row" style="align-items:flex-start;">
+        <span class="badge primary" style="min-width:26px; text-align:center; margin-top:8px;">${idx + 1}</span>
+        <textarea class="d-enquiry-q" rows="2" placeholder="Enquiry #${idx + 1} (e.g. Bill / File status)..." style="flex:1;">${item.question || ""}</textarea>
+        ${list.length > 1 ? `<button type="button" class="btn-mini" data-rm-enq="${idx}" style="margin-top:6px;">×</button>` : ""}
       </div>
     `).join("");
+  },
+
+  collectDynamicEnquiries() {
+    const rows = document.querySelectorAll("#dDynamicEnquiriesWrap .d-enquiry-q");
+    const list = [];
+    rows.forEach(ta => {
+      list.push({ question: ta.value.trim() });
+    });
+    return list;
+  },
+
+  // =========================================================
+  // ROUND-TRIP RECURSIVE OFFICE DETAILS CHAIN ("Connect to another office? Yes/No")
+  // =========================================================
+  renderRoundTripStops(stops = []) {
+    const list = stops.length ? stops : [{ office: "", designation: "", section: "", action: "", dt: DateTimeHelper.nowLocalISO(), connectNext: "No" }];
+    const wrap = document.getElementById("dRoundTripStopsList");
+    wrap.innerHTML = list.map((st, idx) => {
+      const isLast = idx === list.length - 1;
+      const connectVal = isLast ? (st.connectNext || "No") : "Yes";
+      return `
+        <div class="dynamic-schema-box mb-8 rt-stop-card" data-stop-idx="${idx}">
+          <div class="row-between mb-6">
+            <span class="badge primary">Office #${idx + 1}</span>
+            ${list.length > 1 ? `<button type="button" class="btn-mini" data-rm-rtstop="${idx}">× Remove</button>` : ""}
+          </div>
+          <div class="form-group" style="margin-top:0;">
+            <label>To Office</label>
+            <input type="text" class="rt-stop-office" list="dOfficeList" value="${st.office || ""}" placeholder="Select or type office name..." />
+          </div>
+          <div class="row-gap">
+            <div class="form-group" style="flex:1; margin-top:6px;">
+              <label>Designation</label>
+              <input type="text" class="rt-stop-desig" list="dDesigList" value="${st.designation || ""}" placeholder="Designation..." />
+            </div>
+            <div class="form-group" style="flex:1; margin-top:6px;">
+              <label>Section</label>
+              <input type="text" class="rt-stop-section" list="dSectionList" value="${st.section || ""}" placeholder="Section..." />
+            </div>
+          </div>
+          <div class="form-group" style="margin-top:6px;">
+            <label>Action</label>
+            <div class="chip-wrap mb-6">
+              <button type="button" class="smart-chip" data-rtaction="Signing">Signing</button>
+              <button type="button" class="smart-chip" data-rtaction="Countersigning">Countersigning</button>
+              <button type="button" class="smart-chip" data-rtaction="Approving">Approving</button>
+              <button type="button" class="smart-chip" data-rtaction="Verification">Verification</button>
+              <button type="button" class="smart-chip" data-rtaction="Rejecting">Rejecting</button>
+            </div>
+            <input type="text" class="rt-stop-action" value="${st.action || ""}" placeholder="Signing, countersigning, approving, rejecting..." />
+          </div>
+          <div class="form-group" style="margin-top:6px;">
+            <label>Date & Time</label>
+            <input type="datetime-local" class="rt-stop-dt" value="${DateTimeHelper.toDateTimeLocalValue(st.dt) || DateTimeHelper.nowLocalISO()}" />
+          </div>
+          <div class="form-group" style="margin-top:8px; padding-top:8px; border-top:1px dashed #cbd5e1;">
+            <label>Connect to another office?</label>
+            <div class="toggle-row rt-connect-group" data-stop-idx="${idx}">
+              <button type="button" class="toggle-btn ${connectVal === "Yes" ? "selected" : ""}" data-connect="Yes">Yes</button>
+              <button type="button" class="toggle-btn ${connectVal === "No" ? "selected" : ""}" data-connect="No">No</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
   },
 
   collectRoundTripStops() {
     const cards = document.querySelectorAll("#dRoundTripStopsList .rt-stop-card");
     const stops = [];
-    cards.forEach(c => {
+    cards.forEach((c, idx) => {
+      const selBtn = c.querySelector(".rt-connect-group button.selected");
+      const connectNext = (idx < cards.length - 1) ? "Yes" : (selBtn ? selBtn.dataset.connect : "No");
       stops.push({
         office: c.querySelector(".rt-stop-office").value.trim(),
+        designation: c.querySelector(".rt-stop-desig").value.trim(),
+        section: c.querySelector(".rt-stop-section").value.trim(),
         action: c.querySelector(".rt-stop-action").value.trim(),
-        officer: c.querySelector(".rt-stop-officer").value.trim(),
-        dt: c.querySelector(".rt-stop-dt").value || DateTimeHelper.nowLocalISO()
+        dt: c.querySelector(".rt-stop-dt").value || DateTimeHelper.nowLocalISO(),
+        connectNext
       });
     });
     return stops;
@@ -401,9 +502,10 @@ const DeliveryModule = {
   renderDynamicItems(existingItems = []) {
     const nature = document.getElementById("dNature").value.trim() || "File";
     const count = Math.max(1, Math.min(30, parseInt(document.getElementById("dItemCount").value || "1", 10)));
+    const isRt = (this.currentTask && this.currentTask.Direction === "Round-Trip");
 
-    document.getElementById("lblDItemCount").textContent = `6. No. of ${nature}`;
-    document.getElementById("lblDItemNumbers").textContent = count > 1 ? `7. ${nature} Numbers` : `7. ${nature} No.`;
+    document.getElementById("lblDItemCount").textContent = `${isRt ? "5" : "6"}. No. of ${nature}`;
+    document.getElementById("lblDItemNumbers").textContent = `${isRt ? "6" : "7"}. ${count > 1 ? nature + " Numbers" : nature + " Number"}`;
 
     const modeWrap = document.getElementById("dSameVariousWrap");
     modeWrap.classList.toggle("hidden", count <= 1);
@@ -488,41 +590,75 @@ const DeliveryModule = {
   // =========================================================
   async saveStage1() {
     const direction = this.getToggle("dDirectionGroup") || "Outward";
-    const office = document.getElementById("dOfficeName").value.trim();
-    if (!office) {
-      showToast("Enter Office Name.");
-      document.getElementById("dOfficeName").focus();
-      return;
-    }
-
     this.currentTask.Direction = direction;
     this.currentTask.Created_DateTime = document.getElementById("dCreatedDT").value || DateTimeHelper.nowLocalISO();
-    this.currentTask.Office_Name = office;
     this.currentTask.Urgency = this.getToggle("dUrgencyGroup") || "Normal";
 
     if (direction === "Enquiry") {
       const enquirer = document.getElementById("dEnquirerName").value.trim();
-      const enquiryText = document.getElementById("dEnquiryText").value.trim();
+      const toOffice = document.getElementById("dEnquiryOfficeName").value.trim();
+      const enquiries = this.collectDynamicEnquiries().filter(e => e.question);
+
       if (!enquirer) {
         showToast("Enter Enquirer's Name.");
         document.getElementById("dEnquirerName").focus();
         return;
       }
-      if (!enquiryText) {
-        showToast("Enter the Enquiry details.");
-        document.getElementById("dEnquiryText").focus();
+      if (!toOffice) {
+        showToast("Enter To Office Name.");
+        document.getElementById("dEnquiryOfficeName").focus();
         return;
       }
+      if (!enquiries.length) {
+        showToast("Enter at least 1 Enquiry.");
+        return;
+      }
+
       this.currentTask.Enquirer_Name = enquirer;
-      this.currentTask.Enquiry_Text = enquiryText;
+      this.currentTask.Office_Name = toOffice;
+      this.currentTask.Enquiries_JSON = JSON.stringify(enquiries);
+      this.currentTask.Enquiry_Text = enquiries.map((e, i) => enquiries.length > 1 ? `${i + 1}. ${e.question}` : e.question).join(" | ");
       this.currentTask.Nature = "Enquiry";
-      this.currentTask.Items_Summary = enquiryText.slice(0, 60);
-    } else {
+      this.currentTask.Items_Summary = this.currentTask.Enquiry_Text.slice(0, 70);
+    } else if (direction === "Round-Trip") {
+      const givenBy = document.getElementById("dFileGivenBy").value.trim();
+      if (!givenBy) {
+        showToast("Enter File Given by.");
+        document.getElementById("dFileGivenBy").focus();
+        return;
+      }
       const nature = document.getElementById("dNature").value.trim() || "File";
       const items = this.collectDynamicItems();
       const hasAtt = this.getToggle("dAttachToggleGroup") || "No";
       const atts = this.collectAttachments();
 
+      this.currentTask.File_Given_By = givenBy;
+      this.currentTask.Section = document.getElementById("dSection").value.trim();
+      this.currentTask.Nature = nature;
+      this.currentTask.Item_Count = items.length;
+      this.currentTask.Nature_Mode = this.natureMode;
+      this.currentTask.Items_JSON = JSON.stringify(items);
+      this.currentTask.Items_Summary = this.formatItemsSummary(items, nature);
+      this.currentTask.Description = document.getElementById("dDescription").value.trim();
+      this.currentTask.Has_Attachments = hasAtt;
+      this.currentTask.Attachment_Count = hasAtt === "Yes" ? atts.length : 0;
+      this.currentTask.Attachments_JSON = JSON.stringify(atts);
+      if (!this.currentTask.Office_Name) {
+        this.currentTask.Office_Name = `From ${givenBy}${this.currentTask.Section ? " (" + this.currentTask.Section + ")" : ""}`;
+      }
+    } else {
+      const office = document.getElementById("dOfficeName").value.trim();
+      if (!office) {
+        showToast("Enter Office Name.");
+        document.getElementById("dOfficeName").focus();
+        return;
+      }
+      const nature = document.getElementById("dNature").value.trim() || "File";
+      const items = this.collectDynamicItems();
+      const hasAtt = this.getToggle("dAttachToggleGroup") || "No";
+      const atts = this.collectAttachments();
+
+      this.currentTask.Office_Name = office;
       this.currentTask.Designation = document.getElementById("dDesignation").value.trim();
       this.currentTask.Section = document.getElementById("dSection").value.trim();
       this.currentTask.Nature = nature;
@@ -535,15 +671,6 @@ const DeliveryModule = {
       this.currentTask.Attachment_Count = hasAtt === "Yes" ? atts.length : 0;
       this.currentTask.Attachments_JSON = JSON.stringify(atts);
       this.currentTask.Planned_Delivery_DT = direction === "Outward" ? document.getElementById("dPlannedDT").value : "";
-
-      if (direction === "Round-Trip") {
-        this.currentTask.RoundTrip_Purpose = document.getElementById("dRoundTripPurpose").value.trim();
-        let stops = [];
-        try { stops = JSON.parse(this.currentTask.RoundTrip_Stops_JSON || "[]"); } catch (e) {}
-        if (!stops.length || !stops[0].office) {
-          this.currentTask.RoundTrip_Stops_JSON = JSON.stringify([{ office, action: "", dt: this.currentTask.Created_DateTime, officer: "" }]);
-        }
-      }
     }
 
     this.upsertLocalTask(this.currentTask);
@@ -554,68 +681,52 @@ const DeliveryModule = {
   },
 
   async saveStage2() {
-    if (!this.currentTask.Office_Name) {
-      if (!document.getElementById("dOfficeName").value.trim()) {
-        showToast("Complete Stage 1 first.");
-        return;
-      }
-      await this.saveStage1();
-    }
-
     const dir = this.currentTask.Direction || "Outward";
 
-    // MODE 1: ENQUIRY REPLY & REPORTING
+    // MODE 1: ENQUIRY STAGE 2 (REPLY, RESPONDENT, DATE & TIME OF REPLY)
     if (dir === "Enquiry") {
+      if (!this.currentTask.Enquiry_Text) {
+        showToast("Complete Stage 1 first.");
+        this.openStage(1);
+        return;
+      }
       const reply = document.getElementById("dReplyText").value.trim();
       if (!reply) {
-        showToast("Enter the Reply received.");
+        showToast("Enter the Reply.");
         document.getElementById("dReplyText").focus();
         return;
       }
-      const repStatus = this.getToggle("dEnquiryReportStatusGroup") || "Not Reported";
-      const method = document.getElementById("dReportMethodInput").value.trim();
-
-      if (repStatus === "Reported" && !method) {
-        showToast("Select or enter Method of Reporting.");
-        document.getElementById("dReportMethodInput").focus();
-        return;
-      }
-
       this.currentTask.Reply_Text = reply;
+      this.currentTask.Respondent_Name = document.getElementById("dRespondentName").value.trim();
       this.currentTask.Reply_DateTime = document.getElementById("dReplyDT").value || DateTimeHelper.nowLocalISO();
-      this.currentTask.Report_Status = repStatus;
-      this.currentTask.Reported_DateTime = repStatus === "Reported"
-        ? (document.getElementById("dEnquiryReportedDT").value || DateTimeHelper.nowLocalISO())
-        : "";
-      this.currentTask.Report_Method = repStatus === "Reported" ? method : "";
-      this.currentTask.Stage2_Comments = document.getElementById("dEnquiryComments").value.trim();
       this.currentTask.Delivery_Status = "Delivered";
 
       this.upsertLocalTask(this.currentTask);
       this.updateStageSummaries();
       await AppStore.pushAction("saveDelivery", this.currentTask);
-
-      if (repStatus === "Reported") {
-        showToast("Enquiry reported & moved to History ✓");
-        this.collapseAllStages();
-        this.switchSubView("history");
-      } else {
-        showToast("Reply saved — moved to Unreported until conveyed to Enquirer");
-        this.collapseAllStages();
-      }
+      showToast("Reply saved ✓ Proceed to Stage 3 to report to Enquirer");
+      this.openStage(3);
       return;
     }
 
-    // MODE 2: ROUND-TRIP MOVEMENT TRAIL
+    // MODE 2: ROUND-TRIP STAGE 2 (RECURSIVE OFFICE DETAILS CHAIN)
     if (dir === "Round-Trip") {
-      const stops = this.collectRoundTripStops().filter(s => s.office || s.action);
+      if (!this.currentTask.File_Given_By && !document.getElementById("dFileGivenBy").value.trim()) {
+        showToast("Complete Stage 1 first.");
+        this.openStage(1);
+        return;
+      }
+      if (!this.currentTask.File_Given_By) {
+        await this.saveStage1();
+      }
+      const stops = this.collectRoundTripStops().filter(s => s.office);
       if (!stops.length) {
-        showToast("Record at least 1 office stop.");
+        showToast("Enter at least Office #1.");
         return;
       }
       this.currentTask.RoundTrip_Stops_JSON = JSON.stringify(stops);
-      this.currentTask.RoundTrip_Custody = this.getToggle("dRoundTripCustodyGroup") || "With Me / In Transit";
-      this.currentTask.Stage2_Comments = document.getElementById("dRoundTripComments").value.trim();
+      this.currentTask.Office_Name = stops.map(s => s.office).join(" → ");
+      this.currentTask.Designation = stops[0].designation || "";
       this.currentTask.Completed_DateTime = stops[stops.length - 1].dt || DateTimeHelper.nowLocalISO();
       if (this.currentTask.Delivery_Status !== "Returned") {
         this.currentTask.Delivery_Status = "In Progress";
@@ -624,12 +735,27 @@ const DeliveryModule = {
       this.upsertLocalTask(this.currentTask);
       this.updateStageSummaries();
       await AppStore.pushAction("saveDelivery", this.currentTask);
-      showToast("Office movement saved ✓ Open Stage 3 when returned to our office");
-      this.openStage(3);
+
+      const lastStop = stops[stops.length - 1];
+      if (lastStop.connectNext === "Yes") {
+        showToast("Office movement saved ✓ Add next office or open Stage 3 when back");
+        this.collapseAllStages();
+      } else {
+        showToast("Office details saved ✓ Proceed to Stage 3 when back to office");
+        this.openStage(3);
+      }
       return;
     }
 
-    // MODE 3 & 4: OUTWARD DELIVERY & INWARD COLLECTION
+    // MODE 3 & 4: OUTWARD DELIVERY & INWARD COLLECTION STAGE 2
+    if (!this.currentTask.Office_Name) {
+      if (!document.getElementById("dOfficeName").value.trim()) {
+        showToast("Complete Stage 1 first.");
+        return;
+      }
+      await this.saveStage1();
+    }
+
     const status = this.getToggle("dStatusGroup");
     if (!status) {
       showToast("Select Delivered or Not Delivered.");
@@ -676,18 +802,81 @@ const DeliveryModule = {
   async saveStage3() {
     const dir = this.currentTask.Direction || "Outward";
 
-    // ROUND-TRIP FINAL RETURN TO OUR OFFICE
-    if (dir === "Round-Trip") {
-      const returnReceiver = document.getElementById("dRtReturnReceiverName").value.trim();
-      if (!returnReceiver) {
-        showToast("Enter who in our office received the returned document.");
-        document.getElementById("dRtReturnReceiverName").focus();
+    // ENQUIRY STAGE 3: REPORT TO ENQUIRER
+    if (dir === "Enquiry") {
+      if (!this.currentTask.Reply_Text) {
+        showToast("Save Stage 2 Reply first.");
+        this.openStage(2);
         return;
       }
+      const repStatus = this.getToggle("dEnquiryReportStatusGroup");
+      if (!repStatus) {
+        showToast("Select Reported or Not Reported.");
+        return;
+      }
+      const method = document.getElementById("dReportMethodInput").value.trim();
+      if (repStatus === "Reported" && !method) {
+        showToast("Select or enter Method of Reporting.");
+        document.getElementById("dReportMethodInput").focus();
+        return;
+      }
+
+      this.currentTask.Report_Status = repStatus;
+      this.currentTask.Reported_DateTime = repStatus === "Reported"
+        ? (document.getElementById("dEnquiryReportedDT").value || DateTimeHelper.nowLocalISO())
+        : "";
+      this.currentTask.Report_Method = repStatus === "Reported" ? method : "";
+      this.currentTask.Stage2_Comments = document.getElementById("dEnquiryComments").value.trim();
+
+      this.upsertLocalTask(this.currentTask);
+      this.updateStageSummaries();
+      await AppStore.pushAction("saveDelivery", this.currentTask);
+
+      if (repStatus === "Reported") {
+        showToast("Enquiry reported & moved to History ✓");
+        this.collapseAllStages();
+        this.switchSubView("history");
+      } else {
+        showToast("Saved as Not Reported — listed in Unreported tab");
+        this.collapseAllStages();
+      }
+      return;
+    }
+
+    // ROUND-TRIP STAGE 3: BACK TO OFFICE
+    if (dir === "Round-Trip") {
+      const docReceiver = document.getElementById("dRtDocReceiverName").value.trim();
+      if (!docReceiver) {
+        showToast("Enter File / Doc Received By.");
+        document.getElementById("dRtDocReceiverName").focus();
+        return;
+      }
+      const recGiven = this.getToggle("dRtReceiptGivenGroup");
+      if (!recGiven) {
+        showToast("Select Yes or No for Receipt Received.");
+        return;
+      }
+      const recNoReason = document.getElementById("dRtReceiptNoReason").value.trim();
+      const recReceiver = document.getElementById("dRtReceiptReceiverName").value.trim();
+
+      if (recGiven === "No" && !recNoReason) {
+        showToast("Enter reason why receipt was not received.");
+        document.getElementById("dRtReceiptNoReason").focus();
+        return;
+      }
+      if (recGiven === "Yes" && !recReceiver) {
+        showToast("Enter who received the receipt.");
+        document.getElementById("dRtReceiptReceiverName").focus();
+        return;
+      }
+
       this.currentTask.Delivery_Status = "Returned";
-      this.currentTask.Receiver_Name = returnReceiver;
+      this.currentTask.Stage2_Receiver_Name = docReceiver;
       this.currentTask.Reported_DateTime = document.getElementById("dRtReturnDT").value || DateTimeHelper.nowLocalISO();
-      this.currentTask.RoundTrip_Custody = "Returned to Our Office";
+      this.currentTask.Receipt_Given = recGiven;
+      this.currentTask.Receipt_No_Reason = recGiven === "No" ? recNoReason : "";
+      this.currentTask.Receiver_Name = recGiven === "Yes" ? recReceiver : "";
+      this.currentTask.Stage2_Comments = document.getElementById("dRtComments").value.trim();
 
       this.upsertLocalTask(this.currentTask);
       this.updateStageSummaries();
@@ -698,7 +887,7 @@ const DeliveryModule = {
       return;
     }
 
-    // OUTWARD RECEIPT HANDOVER
+    // OUTWARD DELIVERY STAGE 3: RECEIPT REPORTING
     const given = this.getToggle("dReceiptGivenGroup");
     if (!given) {
       showToast("Select Yes or No for Receipt.");
@@ -746,7 +935,7 @@ const DeliveryModule = {
   },
 
   // =========================================================
-  // GROUP STAGE 3 REPORTING MODAL (OUTWARD RECEIPTS)
+  // GROUP STAGE 3 REPORTING MODAL
   // =========================================================
   openGroupReportModal() {
     if (!this.selectedUnrepIds.size) {
@@ -839,42 +1028,51 @@ const DeliveryModule = {
   updateStageSummaries() {
     const t = this.currentTask;
     const dir = t.Direction || "Outward";
-    const s1Done = Boolean(t.Office_Name && t.Created_DateTime);
 
     if (dir === "Enquiry") {
+      const s1Done = Boolean(t.Office_Name && t.Enquiry_Text);
       document.getElementById("dSummary1").textContent = s1Done
-        ? `Enquiry to ${t.Office_Name} (by ${t.Enquirer_Name || "Staff"})`
+        ? `To ${t.Office_Name} (Enquirer: ${t.Enquirer_Name || "Staff"})`
         : "Enquiry Details";
       const s2Done = Boolean(t.Reply_Text);
       document.getElementById("dSummary2").textContent = s2Done
-        ? `Reply recorded • ${t.Report_Status || "Not Reported"}${t.Report_Method ? " via " + t.Report_Method : ""}`
-        : "Reply & Reporting Status";
-      document.getElementById("dCard1").classList.toggle("completed", s1Done);
-      document.getElementById("dCard2").classList.toggle("completed", s2Done && t.Report_Status === "Reported");
-      return;
-    }
+        ? `Reply${t.Respondent_Name ? " by " + t.Respondent_Name : ""} (${DateTimeHelper.formatShort(t.Reply_DateTime)})`
+        : "Reply & Respondent";
+      const s3Done = t.Report_Status === "Reported";
+      document.getElementById("dSummary3").textContent = t.Report_Status
+        ? `${t.Report_Status}${t.Report_Method ? " via " + t.Report_Method : ""}`
+        : "Reporting to Enquirer";
 
-    if (dir === "Round-Trip") {
-      document.getElementById("dSummary1").textContent = s1Done
-        ? `${t.Office_Name} • ${t.Items_Summary || t.Nature}${t.RoundTrip_Purpose ? " (" + t.RoundTrip_Purpose + ")" : ""}`
-        : "Document & First Office";
-      let stops = [];
-      try { stops = JSON.parse(t.RoundTrip_Stops_JSON || "[]"); } catch (e) {}
-      const validStops = stops.filter(s => s.office);
-      document.getElementById("dSummary2").textContent = validStops.length
-        ? `${validStops.length} stop(s): ${validStops.map(s => s.office).join(" → ")}`
-        : "Office Movement & Processing";
-      const s3Done = t.Delivery_Status === "Returned";
-      document.getElementById("dSummary3").textContent = s3Done
-        ? `Returned to ${t.Receiver_Name} (${DateTimeHelper.formatShort(t.Reported_DateTime)})`
-        : "Return Handover to Our Office";
       document.getElementById("dCard1").classList.toggle("completed", s1Done);
-      document.getElementById("dCard2").classList.toggle("completed", validStops.length > 0 && Boolean(validStops[0].action));
+      document.getElementById("dCard2").classList.toggle("completed", s2Done);
       document.getElementById("dCard3").classList.toggle("completed", s3Done);
       return;
     }
 
-    // Delivery / Collection
+    if (dir === "Round-Trip") {
+      const s1Done = Boolean(t.File_Given_By && t.Created_DateTime);
+      document.getElementById("dSummary1").textContent = s1Done
+        ? `${t.Items_Summary || t.Nature} (Given by ${t.File_Given_By})`
+        : "File Preparation";
+      let stops = [];
+      try { stops = JSON.parse(t.RoundTrip_Stops_JSON || "[]"); } catch (e) {}
+      const validStops = stops.filter(s => s.office);
+      document.getElementById("dSummary2").textContent = validStops.length
+        ? validStops.map(s => `${s.office}${s.action ? " [" + s.action + "]" : ""}`).join(" → ")
+        : "Office Details";
+      const s3Done = t.Delivery_Status === "Returned" && Boolean(t.Receipt_Given);
+      document.getElementById("dSummary3").textContent = s3Done
+        ? `Received by ${t.Stage2_Receiver_Name} • Receipt: ${t.Receipt_Given}`
+        : "Back to Office";
+
+      document.getElementById("dCard1").classList.toggle("completed", s1Done);
+      document.getElementById("dCard2").classList.toggle("completed", validStops.length > 0);
+      document.getElementById("dCard3").classList.toggle("completed", s3Done);
+      return;
+    }
+
+    // Outward Delivery & Inward Collection
+    const s1Done = Boolean(t.Office_Name && t.Created_DateTime);
     document.getElementById("dSummary1").textContent = s1Done
       ? `${dir === "Inward" ? "From" : "To"} ${t.Office_Name} • ${t.Items_Summary || t.Nature} [${t.Urgency}]`
       : (dir === "Inward" ? "Collection Details" : "Delivery Details");
@@ -907,6 +1105,9 @@ const DeliveryModule = {
     document.getElementById("dOfficeChips").innerHTML = offices.slice(0, 5).map(v =>
       `<button type="button" class="smart-chip" data-dfill="dOfficeName" data-dval="${v}">${v}</button>`
     ).join("");
+    document.getElementById("dEnquiryOfficeChips").innerHTML = offices.slice(0, 5).map(v =>
+      `<button type="button" class="smart-chip" data-dfill="dEnquiryOfficeName" data-dval="${v}">${v}</button>`
+    ).join("");
     document.getElementById("dDesigChips").innerHTML = desigs.slice(0, 5).map(v =>
       `<button type="button" class="smart-chip" data-dfill="dDesignation" data-dval="${v}">${v}</button>`
     ).join("");
@@ -936,18 +1137,31 @@ const DeliveryModule = {
       `<button type="button" class="smart-chip" data-dfill="dNotDelivReason" data-dval="${r}">${r}</button>`
     ).join("");
 
-    // Our Office Staff Pool (for Enquirer, Collection Receiver, Receipt Receiver, Round-Trip Return Receiver)
+    // Our Office Staff Pool
     const ourStaff = AppStore.rankByFrequency([
       ...AppStore.deliveries.map(t => t.Enquirer_Name),
+      ...AppStore.deliveries.map(t => t.File_Given_By),
       ...AppStore.deliveries.map(t => t.Receiver_Name),
-      ...AppStore.deliveries.filter(t => t.Direction === "Inward").map(t => t.Stage2_Receiver_Name)
+      ...AppStore.deliveries.filter(t => t.Direction === "Inward" || t.Direction === "Round-Trip").map(t => t.Stage2_Receiver_Name)
     ]).slice(0, 6);
 
     document.getElementById("dEnquirerChips").innerHTML = ourStaff.map(n =>
       `<button type="button" class="smart-chip" data-dfill="dEnquirerName" data-dval="${n}">${n}</button>`
     ).join("");
-    document.getElementById("dRtReturnReceiverChips").innerHTML = ourStaff.map(n =>
-      `<button type="button" class="smart-chip" data-dfill="dRtReturnReceiverName" data-dval="${n}">${n}</button>`
+    document.getElementById("dFileGivenByChips").innerHTML = ourStaff.map(n =>
+      `<button type="button" class="smart-chip" data-dfill="dFileGivenBy" data-dval="${n}">${n}</button>`
+    ).join("");
+    document.getElementById("dRtDocReceiverChips").innerHTML = ourStaff.map(n =>
+      `<button type="button" class="smart-chip" data-dfill="dRtDocReceiverName" data-dval="${n}">${n}</button>`
+    ).join("");
+    document.getElementById("dRtReceiptReceiverChips").innerHTML = ourStaff.map(n =>
+      `<button type="button" class="smart-chip" data-dfill="dRtReceiptReceiverName" data-dval="${n}">${n}</button>`
+    ).join("");
+
+    // External Respondents Pool
+    const respondents = AppStore.rankByFrequency(AppStore.deliveries.map(t => t.Respondent_Name)).slice(0, 6);
+    document.getElementById("dRespondentChips").innerHTML = respondents.map(n =>
+      `<button type="button" class="smart-chip" data-dfill="dRespondentName" data-dval="${n}">${n}</button>`
     ).join("");
 
     const isInward = (this.currentTask && (this.currentTask.Direction || "Outward") === "Inward");
@@ -961,6 +1175,9 @@ const DeliveryModule = {
     const recNoReasons = AppStore.rankByFrequency(AppStore.deliveries.map(t => t.Receipt_No_Reason), CONFIG.DEFAULT_RECEIPT_NO_REASONS).slice(0, 5);
     document.getElementById("dReceiptNoChips").innerHTML = recNoReasons.map(r =>
       `<button type="button" class="smart-chip" data-dfill="dReceiptNoReason" data-dval="${r}">${r}</button>`
+    ).join("");
+    document.getElementById("dRtReceiptNoChips").innerHTML = recNoReasons.map(r =>
+      `<button type="button" class="smart-chip" data-dfill="dRtReceiptNoReason" data-dval="${r}">${r}</button>`
     ).join("");
 
     document.getElementById("dReceiverChips").innerHTML = ourStaff.map((n, i) =>
@@ -978,7 +1195,6 @@ const DeliveryModule = {
   },
 
   renderActiveTasks() {
-    // Active tasks = not completed lifecycle AND not waiting solely in Unreported
     let active = AppStore.deliveries.filter(t => {
       if (this.isCompletedLifecycle(t)) return false;
       const dir = t.Direction || "Outward";
@@ -1020,17 +1236,17 @@ const DeliveryModule = {
         nextBtnText = "Hand Over to Office →";
       } else if (dir === "Enquiry") {
         subline = `Enquirer: <strong>${t.Enquirer_Name}</strong> • ${t.Enquiry_Text}`;
-        nextBtnText = "Enter Reply →";
+        nextBtnText = "Enter Reply (S2) →";
       } else if (dir === "Round-Trip") {
         let stops = [];
         try { stops = JSON.parse(t.RoundTrip_Stops_JSON || "[]"); } catch (e) {}
         const validStops = stops.filter(s => s.office);
-        subline = `${t.Items_Summary || t.Nature}${t.RoundTrip_Purpose ? " • " + t.RoundTrip_Purpose : ""}`;
-        if (validStops.length && validStops[0].action) {
-          nextBtnText = "Return to Office (S3) →";
+        subline = `${t.Items_Summary || t.Nature} • Given by: <strong>${t.File_Given_By || "—"}</strong>`;
+        if (validStops.length && validStops[validStops.length - 1].connectNext === "No") {
+          nextBtnText = "Back to Office (S3) →";
           nextStage = 3;
         } else {
-          nextBtnText = "Log Office Stop →";
+          nextBtnText = "Office Details (S2) →";
         }
       }
 
@@ -1045,10 +1261,7 @@ const DeliveryModule = {
           </div>
           <div class="small mt-6">${subline}</div>
           ${t.Description ? `<div class="small muted mt-6">${t.Description}</div>` : ""}
-          <div class="small muted mt-6">
-            ${dir === "Round-Trip" ? `Custody: <strong>${t.RoundTrip_Custody || "With Me"}</strong> • ` : ""}
-            ${DateTimeHelper.formatShort(t.Created_DateTime)}
-          </div>
+          <div class="small muted mt-6">${DateTimeHelper.formatShort(t.Created_DateTime)}</div>
           ${t.Delivery_Status === "Not Delivered" ? `<div class="exception-pill">Not Delivered: ${t.Not_Delivered_Reason}</div>` : ""}
           <div class="row-between mt-8">
             <button type="button" class="btn-mini" data-load-dtask="${t.Task_ID}" data-dopen-stage="1">Edit</button>
@@ -1059,7 +1272,6 @@ const DeliveryModule = {
   },
 
   renderUnreportedTasks() {
-    // Includes Outward delivered tasks awaiting receipt handover + Enquiries with reply awaiting reporting to Enquirer
     const unrep = AppStore.deliveries.filter(t => {
       const dir = t.Direction || "Outward";
       if (dir === "Outward" && t.Delivery_Status === "Delivered" && !t.Receipt_Given) return true;
@@ -1087,13 +1299,13 @@ const DeliveryModule = {
               ${this.getDirectionBadgeHTML(dir)}
               <strong>${t.Office_Name}</strong>
             </label>
-            <button type="button" class="btn-mini accent" data-load-dtask="${t.Task_ID}" data-dopen-stage="${isEnq ? 2 : 3}">
-              ${isEnq ? "Report Reply →" : "Report Receipt →"}
+            <button type="button" class="btn-mini accent" data-load-dtask="${t.Task_ID}" data-dopen-stage="3">
+              ${isEnq ? "Report Reply (S3) →" : "Report Receipt (S3) →"}
             </button>
           </div>
           <div class="small mt-6">
             ${isEnq
-              ? `Enquirer: <strong>${t.Enquirer_Name}</strong> • Reply: ${t.Reply_Text}`
+              ? `Enquirer: <strong>${t.Enquirer_Name}</strong> • Reply${t.Respondent_Name ? " (" + t.Respondent_Name + ")" : ""}: ${t.Reply_Text}`
               : `${t.Items_Summary || t.Nature}${t.Stage2_Receiver_Name ? ` • Received by: <strong>${t.Stage2_Receiver_Name}</strong>` : ""}`}
           </div>
         </div>`;
@@ -1110,8 +1322,8 @@ const DeliveryModule = {
     this.populateSelectFilter("dHistoryFilterOffice", completed.map(t => t.Office_Name), "Office: All");
     this.populateSelectFilter("dHistoryFilterNature", completed.map(t => t.Nature), "Nature: All");
     this.populateSelectFilter("dHistoryFilterDesig", completed.map(t => t.Designation), "Designation: All");
-    const allPeople = completed.flatMap(t => [t.Stage2_Receiver_Name, t.Receiver_Name, t.Enquirer_Name]).filter(Boolean);
-    this.populateSelectFilter("dHistoryFilterReceiver", allPeople, "Receiver / Enquirer: All");
+    const allPeople = completed.flatMap(t => [t.Stage2_Receiver_Name, t.Receiver_Name, t.Enquirer_Name, t.Respondent_Name, t.File_Given_By]).filter(Boolean);
+    this.populateSelectFilter("dHistoryFilterReceiver", allPeople, "Staff / Person: All");
 
     const q = document.getElementById("dHistorySearch").value.trim().toLowerCase();
     const sortBy = document.getElementById("dHistorySort").value;
@@ -1131,15 +1343,18 @@ const DeliveryModule = {
     if (fOffice !== "ALL") list = list.filter(t => t.Office_Name === fOffice);
     if (fNature !== "ALL") list = list.filter(t => t.Nature === fNature);
     if (fDesig !== "ALL") list = list.filter(t => t.Designation === fDesig);
-    if (fReceiver !== "ALL") list = list.filter(t => t.Stage2_Receiver_Name === fReceiver || t.Receiver_Name === fReceiver || t.Enquirer_Name === fReceiver);
-    if (dFrom) list = list.filter(t => (t.Completed_DateTime || t.Reply_DateTime || t.Created_DateTime || "").slice(0, 10) >= dFrom);
-    if (dTo) list = list.filter(t => (t.Completed_DateTime || t.Reply_DateTime || t.Created_DateTime || "").slice(0, 10) <= dTo);
+    if (fReceiver !== "ALL") {
+      list = list.filter(t => [t.Stage2_Receiver_Name, t.Receiver_Name, t.Enquirer_Name, t.Respondent_Name, t.File_Given_By].includes(fReceiver));
+    }
+    if (dFrom) list = list.filter(t => (t.Reported_DateTime || t.Completed_DateTime || t.Created_DateTime || "").slice(0, 10) >= dFrom);
+    if (dTo) list = list.filter(t => (t.Reported_DateTime || t.Completed_DateTime || t.Created_DateTime || "").slice(0, 10) <= dTo);
 
     if (q) {
       list = list.filter(t => [
         t.Office_Name, t.Designation, t.Section, t.Nature, t.Items_Summary,
         t.Description, t.Stage2_Comments, t.Stage2_Receiver_Name, t.Receiver_Name,
-        t.Enquirer_Name, t.Enquiry_Text, t.Reply_Text, t.RoundTrip_Purpose, t.RoundTrip_Stops_JSON
+        t.Enquirer_Name, t.Respondent_Name, t.Enquiry_Text, t.Reply_Text,
+        t.File_Given_By, t.RoundTrip_Stops_JSON
       ].filter(Boolean).join(" ").toLowerCase().includes(q));
     }
 
@@ -1162,12 +1377,12 @@ const DeliveryModule = {
 
       if (dir === "Enquiry") {
         summaryLine = `Enquirer: <strong>${t.Enquirer_Name}</strong> • ${t.Enquiry_Text}`;
-        metaLine = `Reply: ${t.Reply_Text} • Reported via <strong>${t.Report_Method || "Direct"}</strong> (${DateTimeHelper.formatShort(t.Reported_DateTime)})`;
+        metaLine = `Reply${t.Respondent_Name ? " by <strong>" + t.Respondent_Name + "</strong>" : ""}: ${t.Reply_Text} • Reported via <strong>${t.Report_Method || "Direct"}</strong> (${DateTimeHelper.formatShort(t.Reported_DateTime)})`;
       } else if (dir === "Round-Trip") {
         let stops = [];
         try { stops = JSON.parse(t.RoundTrip_Stops_JSON || "[]"); } catch (e) {}
         const route = stops.filter(s => s.office).map(s => s.office).join(" → ");
-        metaLine = `Route: ${route || t.Office_Name} • Returned to: <strong>${t.Receiver_Name}</strong> (${DateTimeHelper.formatShort(t.Reported_DateTime)})`;
+        metaLine = `Route: ${route || t.Office_Name} • Received by: <strong>${t.Stage2_Receiver_Name || "—"}</strong> (${DateTimeHelper.formatShort(t.Reported_DateTime)})`;
       } else if (dir === "Inward") {
         metaLine = `Collected: ${DateTimeHelper.formatShort(t.Created_DateTime)} • Handed over: ${DateTimeHelper.formatShort(t.Completed_DateTime)} → <strong>${t.Stage2_Receiver_Name || "—"}</strong>`;
       } else {
@@ -1212,35 +1427,38 @@ const DeliveryModule = {
     let rowsHTML = "";
     if (dir === "Enquiry") {
       rowsHTML = `
-        <div class="report-row"><span class="report-lbl">Task Type</span><span class="report-val">🔍 Office Enquiry</span></div>
+        <div class="report-row"><span class="report-lbl">Task Type</span><span class="report-val">🔍 Enquiry</span></div>
         <div class="report-row"><span class="report-lbl">Date & Time</span><span class="report-val">${DateTimeHelper.formatShort(t.Created_DateTime)}</span></div>
         <div class="report-row"><span class="report-lbl">Enquirer</span><span class="report-val">${t.Enquirer_Name || "—"}</span></div>
         <div class="report-row"><span class="report-lbl">To Office</span><span class="report-val">${t.Office_Name}</span></div>
-        <div class="report-row"><span class="report-lbl">Enquiry</span><span class="report-val">${t.Enquiry_Text || "—"}</span></div>
+        <div class="report-row"><span class="report-lbl">Enquiry / ies</span><span class="report-val">${t.Enquiry_Text || "—"}</span></div>
         <div class="report-row"><span class="report-lbl">Reply</span><span class="report-val">${t.Reply_Text || "—"}</span></div>
-        <div class="report-row"><span class="report-lbl">Reply Time</span><span class="report-val">${DateTimeHelper.formatShort(t.Reply_DateTime) || "—"}</span></div>
+        <div class="report-row"><span class="report-lbl">Respondent</span><span class="report-val">${t.Respondent_Name || "—"}</span></div>
+        <div class="report-row"><span class="report-lbl">Date & Time of Reply</span><span class="report-val">${DateTimeHelper.formatShort(t.Reply_DateTime) || "—"}</span></div>
         <div class="report-row"><span class="report-lbl">Report Status</span><span class="report-val">${t.Report_Status || "—"}</span></div>
-        <div class="report-row"><span class="report-lbl">Reported Time</span><span class="report-val">${DateTimeHelper.formatShort(t.Reported_DateTime) || "—"}</span></div>
-        <div class="report-row"><span class="report-lbl">Method</span><span class="report-val">${t.Report_Method || "—"}</span></div>
+        <div class="report-row"><span class="report-lbl">Date & Time of Reporting</span><span class="report-val">${DateTimeHelper.formatShort(t.Reported_DateTime) || "—"}</span></div>
+        <div class="report-row"><span class="report-lbl">Method of Reporting</span><span class="report-val">${t.Report_Method || "—"}</span></div>
         <div class="report-row"><span class="report-lbl">Comments</span><span class="report-val">${t.Stage2_Comments || "—"}</span></div>
       `;
     } else if (dir === "Round-Trip") {
       let stops = [];
       try { stops = JSON.parse(t.RoundTrip_Stops_JSON || "[]"); } catch (e) {}
       const stopsText = stops.filter(s => s.office).map((s, i) =>
-        `#${i + 1} ${s.office}${s.action ? " (" + s.action + ")" : ""}${s.officer ? " • " + s.officer : ""} [${DateTimeHelper.formatShort(s.dt)}]`
+        `<strong>Office #${i + 1}:</strong> ${s.office}${s.designation ? " (" + s.designation + ")" : ""}${s.section ? " • Sec: " + s.section : ""}${s.action ? " — <em>" + s.action + "</em>" : ""} [${DateTimeHelper.formatShort(s.dt)}]`
       ).join("<br/>");
 
       rowsHTML = `
         <div class="report-row"><span class="report-lbl">Task Type</span><span class="report-val">🔄 Round-Trip</span></div>
-        <div class="report-row"><span class="report-lbl">First Office</span><span class="report-val">${t.Office_Name}</span></div>
+        <div class="report-row"><span class="report-lbl">Prepared Date & Time</span><span class="report-val">${DateTimeHelper.formatShort(t.Created_DateTime)}</span></div>
+        <div class="report-row"><span class="report-lbl">File Given By</span><span class="report-val">${t.File_Given_By || "—"}</span></div>
         <div class="report-row"><span class="report-lbl">Section</span><span class="report-val">${t.Section || "—"}</span></div>
-        <div class="report-row"><span class="report-lbl">Purpose</span><span class="report-val">${t.RoundTrip_Purpose || "—"}</span></div>
         <div class="report-row"><span class="report-lbl">Items (${t.Item_Count})</span><span class="report-val">${t.Items_Summary || t.Nature}</span></div>
+        <div class="report-row"><span class="report-lbl">Description</span><span class="report-val">${t.Description || "—"}</span></div>
         <div class="report-row"><span class="report-lbl">Attachments</span><span class="report-val">${t.Has_Attachments === "Yes" ? atts.map(a => `${a.nature} ${a.number}`).join(", ") : "None"}</span></div>
-        <div class="report-row"><span class="report-lbl">Movement Trail</span><span class="report-val">${stopsText || "—"}</span></div>
-        <div class="report-row"><span class="report-lbl">Returned To</span><span class="report-val">${t.Receiver_Name || "—"}</span></div>
-        <div class="report-row"><span class="report-lbl">Return Time</span><span class="report-val">${DateTimeHelper.formatShort(t.Reported_DateTime) || "—"}</span></div>
+        <div class="report-row"><span class="report-lbl">Office Details</span><span class="report-val">${stopsText || "—"}</span></div>
+        <div class="report-row"><span class="report-lbl">File/Doc Received By</span><span class="report-val">${t.Stage2_Receiver_Name || "—"}</span></div>
+        <div class="report-row"><span class="report-lbl">Return Date & Time</span><span class="report-val">${DateTimeHelper.formatShort(t.Reported_DateTime) || "—"}</span></div>
+        <div class="report-row"><span class="report-lbl">Receipt Received</span><span class="report-val">${t.Receipt_Given || "—"}${t.Receipt_Given === "Yes" && t.Receiver_Name ? " (" + t.Receiver_Name + ")" : ""}${t.Receipt_No_Reason ? " (" + t.Receipt_No_Reason + ")" : ""}</span></div>
         <div class="report-row"><span class="report-lbl">Comments</span><span class="report-val">${t.Stage2_Comments || "—"}</span></div>
       `;
     } else {
@@ -1324,12 +1542,28 @@ const DeliveryModule = {
         const dir = btn.dataset.val;
         this.currentTask.Direction = dir;
         this.applyDirectionUI(dir);
+        this.renderDynamicItems(this.collectDynamicItems());
         this.updateStageSummaries();
         this.refreshLearnedOptions();
       });
     });
 
-    // Enquiry Stage 2 Report Status & Method Pills
+    // Enquiry Stage 1: + Add / Remove Enquiry Items
+    document.getElementById("btnAddEnquiryItem").addEventListener("click", () => {
+      const list = this.collectDynamicEnquiries();
+      list.push({ question: "" });
+      this.renderDynamicEnquiries(list);
+    });
+    document.getElementById("dDynamicEnquiriesWrap").addEventListener("click", (e) => {
+      if (e.target.dataset.rmEnq !== undefined) {
+        const idx = parseInt(e.target.dataset.rmEnq, 10);
+        const list = this.collectDynamicEnquiries();
+        list.splice(idx, 1);
+        this.renderDynamicEnquiries(list);
+      }
+    });
+
+    // Enquiry Stage 3: Report Status & Method Pills
     document.querySelectorAll("#dEnquiryReportStatusGroup button").forEach(btn => {
       btn.addEventListener("click", () => {
         this.setToggle("dEnquiryReportStatusGroup", btn.dataset.val);
@@ -1346,22 +1580,46 @@ const DeliveryModule = {
       });
     });
 
-    // Round-Trip Stage 2 Add/Remove Stops & Custody
-    document.getElementById("btnAddRoundTripStop").addEventListener("click", () => {
-      const stops = this.collectRoundTripStops();
-      stops.push({ office: "", action: "Signed", dt: DateTimeHelper.nowLocalISO(), officer: "" });
-      this.renderRoundTripStops(stops);
-    });
+    // Round-Trip Stage 2: Recursive "Connect to another office? Yes/No" & Action Chips
     document.getElementById("dRoundTripStopsList").addEventListener("click", (e) => {
+      if (e.target.dataset.rtaction) {
+        const card = e.target.closest(".rt-stop-card");
+        if (card) card.querySelector(".rt-stop-action").value = e.target.dataset.rtaction;
+      }
       if (e.target.dataset.rmRtstop !== undefined) {
         const idx = parseInt(e.target.dataset.rmRtstop, 10);
         const stops = this.collectRoundTripStops();
         stops.splice(idx, 1);
         this.renderRoundTripStops(stops);
       }
+      if (e.target.dataset.connect) {
+        const grp = e.target.closest(".rt-connect-group");
+        const idx = parseInt(grp.dataset.stopIdx, 10);
+        const val = e.target.dataset.connect;
+        const stops = this.collectRoundTripStops();
+
+        if (val === "Yes") {
+          stops[idx].connectNext = "Yes";
+          if (idx === stops.length - 1) {
+            stops.push({ office: "", designation: "", section: "", action: "", dt: DateTimeHelper.nowLocalISO(), connectNext: "No" });
+          }
+          this.renderRoundTripStops(stops);
+        } else {
+          // Trim any trailing blank stops after idx and set connectNext = No
+          const trimmed = stops.slice(0, idx + 1);
+          trimmed[idx].connectNext = "No";
+          this.renderRoundTripStops(trimmed);
+        }
+      }
     });
-    document.querySelectorAll("#dRoundTripCustodyGroup button").forEach(btn => {
-      btn.addEventListener("click", () => this.setToggle("dRoundTripCustodyGroup", btn.dataset.val));
+
+    // Round-Trip Stage 3: Receipt Received Yes/No
+    document.querySelectorAll("#dRtReceiptGivenGroup button").forEach(btn => {
+      btn.addEventListener("click", () => {
+        this.setToggle("dRtReceiptGivenGroup", btn.dataset.val);
+        document.getElementById("dRtReceiptNoBox").classList.toggle("hidden", btn.dataset.val !== "No");
+        document.getElementById("dRtReceiptYesFields").classList.toggle("hidden", btn.dataset.val !== "Yes");
+      });
     });
 
     document.getElementById("dNature").addEventListener("input", () => this.renderDynamicItems(this.collectDynamicItems()));
