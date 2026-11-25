@@ -33,7 +33,7 @@
       <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
       <span>Postage (SOM)</span>
     </button>
-    <button type="button" class="nav-tab" data-tab="delivery" title="Local Delivery & Inward Collection">
+    <button type="button" class="nav-tab" data-tab="delivery" title="Delivery, Collection, Enquiry & Round-Trip">
       <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 7c0-1.1-.9-2-2-2h-3v2h3v2.65L13.52 14H10V9H6c-2.21 0-4 1.79-4 4v3h2c0 1.66 1.34 3 3 3s3-1.34 3-3h4.48L19 10.35V7zM7 17c-.55 0-1-.45-1-1h2c0 .55-.45 1-1 1z"/></svg>
       <span>Local Delivery</span>
     </button>
@@ -314,7 +314,7 @@
   </main>
 
   <!-- ===================================================================== -->
-  <!-- MODULE 2: LOCAL DELIVERY & INWARD COLLECTION                          -->
+  <!-- MODULE 2: DELIVERY, COLLECTION, ENQUIRY & ROUND-TRIP                  -->
   <!-- ===================================================================== -->
   <main id="view-delivery" class="container module-view hidden no-print">
     <div class="sub-nav-bar" style="grid-template-columns: repeat(4, 1fr);">
@@ -328,26 +328,29 @@
       <div class="row-between mb-8">
         <button type="button" id="btnNewDelivery" class="btn btn-primary btn-sm">+ New Entry</button>
         <div class="row-gap">
-          <span id="dActiveTaskBanner" class="badge primary">New Outward Task</span>
+          <span id="dActiveTaskBanner" class="badge primary">New Delivery</span>
           <button type="button" id="btnToggleExpandAllDelivery" class="btn-mini accent">Expand All</button>
         </div>
       </div>
 
+      <!-- 4-MODE TASK TYPE SELECTOR -->
       <section class="card" style="padding:10px 12px;">
-        <div class="micro-label">Task Type / Direction</div>
-        <div class="toggle-row" id="dDirectionGroup">
-          <button type="button" class="toggle-btn selected" data-val="Outward">📤 Outward (Deliver to Office)</button>
-          <button type="button" class="toggle-btn" data-val="Inward">📥 Inward (Collect to Our Office)</button>
+        <div class="micro-label">Task Type</div>
+        <div class="toggle-row" id="dDirectionGroup" style="display:grid; grid-template-columns: repeat(2, 1fr); gap:6px;">
+          <button type="button" class="toggle-btn selected" data-val="Outward">📤 Delivery</button>
+          <button type="button" class="toggle-btn" data-val="Inward">📥 Collection</button>
+          <button type="button" class="toggle-btn" data-val="Enquiry">🔍 Enquiry</button>
+          <button type="button" class="toggle-btn" data-val="Round-Trip">🔄 Round-Trip</button>
         </div>
       </section>
 
-      <!-- STAGE 1 -->
+      <!-- STAGE 1 (SHARED ACROSS ALL 4 MODES WITH CONTEXTUAL FIELDS) -->
       <section class="accordion-card" id="dCard1">
         <div class="accordion-header" data-dstage="1">
           <div class="row-gap">
             <span class="stage-num">1</span>
             <div>
-              <span class="stage-tag" id="dStage1Tag">STAGE 1 • TASK CREATION</span>
+              <span class="stage-tag" id="dStage1Tag">STAGE 1 • DELIVERY DETAILS</span>
               <h2 id="dSummary1">Create Delivery Task</h2>
             </div>
           </div>
@@ -363,82 +366,114 @@
               <button type="button" class="btn-mini accent" data-now-dt="dCreatedDT">Now</button>
             </div>
           </div>
+
+          <!-- ENQUIRER FIELD (ONLY SHOWN FOR ENQUIRY MODE) -->
+          <div class="form-group hidden" id="dEnquirerGroup">
+            <label>2. Enquirer (Staff / Clerk Asking)</label>
+            <div id="dEnquirerChips" class="chip-wrap mb-6"></div>
+            <input type="text" id="dEnquirerName" placeholder="Name of clerk/staff requesting enquiry..." />
+          </div>
+
           <div class="form-group">
             <label id="lblDOfficeName">2. To Office Name</label>
             <div id="dOfficeChips" class="chip-wrap mb-6"></div>
             <input type="text" id="dOfficeName" list="dOfficeList" placeholder="Select or type office name..." />
             <datalist id="dOfficeList"></datalist>
           </div>
-          <div class="form-group">
-            <label id="lblDDesignation">3. Designation</label>
-            <div id="dDesigChips" class="chip-wrap mb-6"></div>
-            <input type="text" id="dDesignation" list="dDesigList" placeholder="Select or type designation..." />
-            <datalist id="dDesigList"></datalist>
+
+          <!-- ENQUIRY TEXT FIELD (ONLY SHOWN FOR ENQUIRY MODE) -->
+          <div class="form-group hidden" id="dEnquiryTextGroup">
+            <label>4. Enquiry / Questions</label>
+            <textarea id="dEnquiryText" rows="3" placeholder="Enter bill number, file number, or enquiry details..."></textarea>
           </div>
-          <div class="form-group">
-            <label id="lblDSection">4. Section</label>
-            <div id="dSectionChips" class="chip-wrap mb-6"></div>
-            <input type="text" id="dSection" list="dSectionList" placeholder="Select or type section..." />
-            <datalist id="dSectionList"></datalist>
-          </div>
-          <div class="form-group">
-            <label>5. Nature of File / Document</label>
-            <div id="dNatureChips" class="chip-wrap mb-6"></div>
-            <input type="text" id="dNature" list="dNatureList" value="File" placeholder="e.g. File, Tapal, Cheque, Bill..." />
-            <datalist id="dNatureList"></datalist>
-          </div>
-          <div class="form-group">
-            <label id="lblDItemCount">6. No. of File</label>
-            <div class="row-gap">
-              <div class="stepper-row" style="max-width:160px;">
-                <button type="button" class="step-btn" id="btnDCountMinus">−</button>
-                <input type="number" id="dItemCount" value="1" min="1" max="30" />
-                <button type="button" class="step-btn" id="btnDCountPlus">+</button>
-              </div>
-              <div id="dSameVariousWrap" class="toggle-row hidden" style="flex:1;">
-                <button type="button" class="toggle-btn selected" data-dmode="Same" id="btnDModeSame">Same</button>
-                <button type="button" class="toggle-btn" data-dmode="Various" id="btnDModeVarious">Various</button>
-              </div>
+
+          <!-- DOCUMENT / FILE FIELDS (SHOWN FOR DELIVERY, COLLECTION & ROUND-TRIP; HIDDEN FOR ENQUIRY) -->
+          <div id="dDocumentFieldsWrap">
+            <div class="form-group">
+              <label id="lblDDesignation">3. Designation</label>
+              <div id="dDesigChips" class="chip-wrap mb-6"></div>
+              <input type="text" id="dDesignation" list="dDesigList" placeholder="Select or type designation..." />
+              <datalist id="dDesigList"></datalist>
             </div>
-          </div>
-          <div class="form-group">
-            <label id="lblDItemNumbers">7. File No.</label>
-            <div id="dPatternChips" class="chip-wrap mb-6"></div>
-            <div id="dDynamicItemsWrap"></div>
-          </div>
-          <div class="form-group">
-            <label>8. Description <span class="muted small">(Optional)</span></label>
-            <input type="text" id="dDescription" placeholder="Brief subject or note..." />
-          </div>
-          <div class="form-group">
-            <label>9. Attachments?</label>
-            <div class="toggle-row" id="dAttachToggleGroup">
-              <button type="button" class="toggle-btn" data-val="Yes">Yes</button>
-              <button type="button" class="toggle-btn selected" data-val="No">No</button>
+            <div class="form-group">
+              <label id="lblDSection">4. Section</label>
+              <div id="dSectionChips" class="chip-wrap mb-6"></div>
+              <input type="text" id="dSection" list="dSectionList" placeholder="Select or type section..." />
+              <datalist id="dSectionList"></datalist>
             </div>
-          </div>
-          <div id="dAttachmentsBox" class="dynamic-schema-box hidden">
-            <div class="form-group" style="margin-top:0;">
-              <label>10. No. of Attachments</label>
-              <div class="stepper-row" style="max-width:160px;">
-                <button type="button" class="step-btn" id="btnDAttachMinus">−</button>
-                <input type="number" id="dAttachCount" value="1" min="1" max="20" />
-                <button type="button" class="step-btn" id="btnDAttachPlus">+</button>
+
+            <!-- ROUND-TRIP PURPOSE (ONLY SHOWN FOR ROUND-TRIP MODE) -->
+            <div class="form-group hidden" id="dRoundTripPurposeGroup">
+              <label>Purpose / Action Required</label>
+              <div id="dPurposeChips" class="chip-wrap mb-6">
+                <button type="button" class="smart-chip" data-dfill="dRoundTripPurpose" data-dval="For Signature">For Signature</button>
+                <button type="button" class="smart-chip" data-dfill="dRoundTripPurpose" data-dval="Counter-Signature">Counter-Signature</button>
+                <button type="button" class="smart-chip" data-dfill="dRoundTripPurpose" data-dval="Verification">Verification</button>
+                <button type="button" class="smart-chip" data-dfill="dRoundTripPurpose" data-dval="Approval / Sanction">Approval / Sanction</button>
+              </div>
+              <input type="text" id="dRoundTripPurpose" placeholder="e.g. For Signature & Return..." />
+            </div>
+
+            <div class="form-group">
+              <label>5. Nature of File / Document</label>
+              <div id="dNatureChips" class="chip-wrap mb-6"></div>
+              <input type="text" id="dNature" list="dNatureList" value="File" placeholder="e.g. File, Tapal, Cheque, Bill..." />
+              <datalist id="dNatureList"></datalist>
+            </div>
+            <div class="form-group">
+              <label id="lblDItemCount">6. No. of File</label>
+              <div class="row-gap">
+                <div class="stepper-row" style="max-width:160px;">
+                  <button type="button" class="step-btn" id="btnDCountMinus">−</button>
+                  <input type="number" id="dItemCount" value="1" min="1" max="30" />
+                  <button type="button" class="step-btn" id="btnDCountPlus">+</button>
+                </div>
+                <div id="dSameVariousWrap" class="toggle-row hidden" style="flex:1;">
+                  <button type="button" class="toggle-btn selected" data-dmode="Same" id="btnDModeSame">Same</button>
+                  <button type="button" class="toggle-btn" data-dmode="Various" id="btnDModeVarious">Various</button>
+                </div>
               </div>
             </div>
             <div class="form-group">
-              <label>11. Attachment Details</label>
-              <div id="dAttachRowsWrap"></div>
+              <label id="lblDItemNumbers">7. File No.</label>
+              <div id="dPatternChips" class="chip-wrap mb-6"></div>
+              <div id="dDynamicItemsWrap"></div>
+            </div>
+            <div class="form-group">
+              <label>8. Description <span class="muted small">(Optional)</span></label>
+              <input type="text" id="dDescription" placeholder="Brief subject or note..." />
+            </div>
+            <div class="form-group">
+              <label>9. Attachments?</label>
+              <div class="toggle-row" id="dAttachToggleGroup">
+                <button type="button" class="toggle-btn" data-val="Yes">Yes</button>
+                <button type="button" class="toggle-btn selected" data-val="No">No</button>
+              </div>
+            </div>
+            <div id="dAttachmentsBox" class="dynamic-schema-box hidden">
+              <div class="form-group" style="margin-top:0;">
+                <label>10. No. of Attachments</label>
+                <div class="stepper-row" style="max-width:160px;">
+                  <button type="button" class="step-btn" id="btnDAttachMinus">−</button>
+                  <input type="number" id="dAttachCount" value="1" min="1" max="20" />
+                  <button type="button" class="step-btn" id="btnDAttachPlus">+</button>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>11. Attachment Details</label>
+                <div id="dAttachRowsWrap"></div>
+              </div>
+            </div>
+            <div class="form-group" id="dPlannedDTGroup">
+              <label>12. Planned Delivery Time</label>
+              <div class="dt-controls">
+                <input type="datetime-local" id="dPlannedDT" data-allow-future="true" />
+                <button type="button" class="btn-mini accent" id="btnDPlanToday3PM">3 PM</button>
+                <button type="button" class="btn-mini accent" id="btnDPlanToday5PM">5 PM</button>
+              </div>
             </div>
           </div>
-          <div class="form-group" id="dPlannedDTGroup">
-            <label>12. Planned Delivery Time</label>
-            <div class="dt-controls">
-              <input type="datetime-local" id="dPlannedDT" data-allow-future="true" />
-              <button type="button" class="btn-mini accent" id="btnDPlanToday3PM">3 PM</button>
-              <button type="button" class="btn-mini accent" id="btnDPlanToday5PM">5 PM</button>
-            </div>
-          </div>
+
           <div class="form-group">
             <label id="lblDUrgency">Urgency Scale</label>
             <div class="toggle-row" id="dUrgencyGroup">
@@ -451,7 +486,7 @@
         </div>
       </section>
 
-      <!-- STAGE 2 -->
+      <!-- STAGE 2 (ADAPTS FOR DELIVERY/COLLECTION, ENQUIRY REPLY, OR ROUND-TRIP STOPS) -->
       <section class="accordion-card" id="dCard2">
         <div class="accordion-header" data-dstage="2">
           <div class="row-gap">
@@ -464,85 +499,182 @@
           <span class="chevron" id="dChev2">▶</span>
         </div>
         <div class="accordion-body collapsed" id="dBody2">
-          <div class="form-group">
-            <label>1. Delivery Status</label>
-            <div class="toggle-row" id="dStatusGroup">
-              <button type="button" class="toggle-btn" data-val="Delivered">Delivered</button>
-              <button type="button" class="toggle-btn" data-val="Not Delivered">Not Delivered</button>
+          <!-- A: STANDARD DELIVERY / COLLECTION STAGE 2 -->
+          <div id="dStage2StandardWrap">
+            <div class="form-group">
+              <label>1. Delivery Status</label>
+              <div class="toggle-row" id="dStatusGroup">
+                <button type="button" class="toggle-btn" data-val="Delivered">Delivered</button>
+                <button type="button" class="toggle-btn" data-val="Not Delivered">Not Delivered</button>
+              </div>
+            </div>
+            <div id="dNotDeliveredBox" class="no-reason-box hidden">
+              <label class="danger-text">2. Not Delivered Reason (Required)</label>
+              <div id="dNotDelivChips" class="chip-wrap mb-6"></div>
+              <input type="text" id="dNotDelivReason" placeholder="Why was it not delivered?" />
+            </div>
+            <div class="form-group">
+              <label id="lblDCompletedDT">3. Date & Time</label>
+              <div class="dt-controls">
+                <input type="datetime-local" id="dCompletedDT" />
+                <button type="button" class="btn-mini" data-step-dt="dCompletedDT" data-days="-1">−1d</button>
+                <button type="button" class="btn-mini" data-step-dt="dCompletedDT" data-days="1">+1d</button>
+                <button type="button" class="btn-mini accent" data-now-dt="dCompletedDT">Now</button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label id="lblDStage2Receiver">4. Receiver's Name</label>
+              <div id="dStage2ReceiverChips" class="chip-wrap mb-6"></div>
+              <input type="text" id="dStage2ReceiverName" placeholder="Name of person who received the file/document..." />
+            </div>
+            <div class="form-group">
+              <label>5. Comments</label>
+              <input type="text" id="dStage2Comments" placeholder="Delivery / handover notes..." />
             </div>
           </div>
-          <div id="dNotDeliveredBox" class="no-reason-box hidden">
-            <label class="danger-text">2. Not Delivered Reason (Required)</label>
-            <div id="dNotDelivChips" class="chip-wrap mb-6"></div>
-            <input type="text" id="dNotDelivReason" placeholder="Why was it not delivered?" />
-          </div>
-          <div class="form-group">
-            <label id="lblDCompletedDT">3. Date & Time</label>
-            <div class="dt-controls">
-              <input type="datetime-local" id="dCompletedDT" />
-              <button type="button" class="btn-mini" data-step-dt="dCompletedDT" data-days="-1">−1d</button>
-              <button type="button" class="btn-mini" data-step-dt="dCompletedDT" data-days="1">+1d</button>
-              <button type="button" class="btn-mini accent" data-now-dt="dCompletedDT">Now</button>
+
+          <!-- B: ENQUIRY REPLY & REPORTING STAGE 2 -->
+          <div id="dStage2EnquiryWrap" class="hidden">
+            <div class="form-group">
+              <label>1. Reply Received</label>
+              <textarea id="dReplyText" rows="3" placeholder="Write the reply / explanation obtained from the office..."></textarea>
+            </div>
+            <div class="form-group">
+              <label>2. Date & Time of Reply</label>
+              <div class="dt-controls">
+                <input type="datetime-local" id="dReplyDT" />
+                <button type="button" class="btn-mini" data-step-dt="dReplyDT" data-days="-1">−1d</button>
+                <button type="button" class="btn-mini" data-step-dt="dReplyDT" data-days="1">+1d</button>
+                <button type="button" class="btn-mini accent" data-now-dt="dReplyDT">Now</button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>3. Report Status (Conveyed to Enquirer?)</label>
+              <div class="toggle-row" id="dEnquiryReportStatusGroup">
+                <button type="button" class="toggle-btn" data-val="Reported">Reported</button>
+                <button type="button" class="toggle-btn" data-val="Not Reported">Not Reported Yet</button>
+              </div>
+            </div>
+            <div id="dEnquiryReportedDetails" class="hidden">
+              <div class="form-group">
+                <label>4. Date & Time of Reporting</label>
+                <div class="dt-controls">
+                  <input type="datetime-local" id="dEnquiryReportedDT" />
+                  <button type="button" class="btn-mini" data-step-dt="dEnquiryReportedDT" data-days="-1">−1d</button>
+                  <button type="button" class="btn-mini" data-step-dt="dEnquiryReportedDT" data-days="1">+1d</button>
+                  <button type="button" class="btn-mini accent" data-now-dt="dEnquiryReportedDT">Now</button>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>5. Method of Reporting</label>
+                <div class="chip-wrap" id="dReportMethodGroup">
+                  <button type="button" class="smart-chip" data-rmethod="Direct">Direct</button>
+                  <button type="button" class="smart-chip" data-rmethod="Phone Call">Phone Call</button>
+                  <button type="button" class="smart-chip" data-rmethod="WhatsApp">WhatsApp</button>
+                  <button type="button" class="smart-chip" data-rmethod="SMS">SMS</button>
+                  <button type="button" class="smart-chip" data-rmethod="Voice Message">Voice Message</button>
+                </div>
+                <input type="text" id="dReportMethodInput" class="mt-6" placeholder="Select pill or type method..." />
+              </div>
+            </div>
+            <div class="form-group">
+              <label>6. Comments</label>
+              <input type="text" id="dEnquiryComments" placeholder="Additional remarks..." />
             </div>
           </div>
-          <div class="form-group">
-            <label id="lblDStage2Receiver">4. Receiver's Name</label>
-            <div id="dStage2ReceiverChips" class="chip-wrap mb-6"></div>
-            <input type="text" id="dStage2ReceiverName" placeholder="Name of person who received the file/document..." />
+
+          <!-- C: ROUND-TRIP MULTI-OFFICE MOVEMENT LOG STAGE 2 -->
+          <div id="dStage2RoundTripWrap" class="hidden">
+            <div class="row-between mb-6">
+              <label style="margin:0;">Office Movement / Processing Stops</label>
+              <button type="button" id="btnAddRoundTripStop" class="btn-mini accent">+ Add Office Stop</button>
+            </div>
+            <div id="dRoundTripStopsList"></div>
+
+            <div class="form-group mt-8">
+              <label>Current Document Custody</label>
+              <div class="toggle-row" id="dRoundTripCustodyGroup">
+                <button type="button" class="toggle-btn selected" data-val="With Me / In Transit">With Me / In Transit</button>
+                <button type="button" class="toggle-btn" data-val="Left at Office for Processing">Left at Office</button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Comments</label>
+              <input type="text" id="dRoundTripComments" placeholder="Movement notes..." />
+            </div>
           </div>
-          <div class="form-group">
-            <label>5. Comments</label>
-            <input type="text" id="dStage2Comments" placeholder="Delivery / handover notes..." />
-          </div>
+
           <button type="button" id="btnSaveDStage2" class="btn btn-primary btn-block mt-12">Save Stage 2</button>
         </div>
       </section>
 
-      <!-- STAGE 3 -->
+      <!-- STAGE 3 (FOR OUTWARD DELIVERY RECEIPT REPORTING OR ROUND-TRIP FINAL RETURN TO OUR OFFICE) -->
       <section class="accordion-card" id="dCard3">
         <div class="accordion-header" data-dstage="3">
           <div class="row-gap">
             <span class="stage-num">3</span>
             <div>
-              <span class="stage-tag">STAGE 3 • RECEIPT REPORTING</span>
+              <span class="stage-tag" id="dStage3Tag">STAGE 3 • RECEIPT REPORTING</span>
               <h2 id="dSummary3">Receipt Handover & Receiver</h2>
             </div>
           </div>
           <span class="chevron" id="dChev3">▶</span>
         </div>
         <div class="accordion-body collapsed" id="dBody3">
-          <div id="dBatchReportBanner" class="som-strip hidden">
-            <span class="som-strip-title" id="dBatchReportText">Batch Reporting</span>
-            <button type="button" id="btnCancelBatchReport" class="btn-mini">Single Mode</button>
-          </div>
-          <div class="form-group">
-            <label>1. Given the Receipt?</label>
-            <div class="toggle-row" id="dReceiptGivenGroup">
-              <button type="button" class="toggle-btn" data-val="Yes">Yes (Given)</button>
-              <button type="button" class="toggle-btn" data-val="No">No (Not Given)</button>
-            </div>
-          </div>
-          <div id="dReceiptNoBox" class="no-reason-box hidden">
-            <label class="danger-text">2. Reason Why Receipt Was Not Given (Required)</label>
-            <div id="dReceiptNoChips" class="chip-wrap mb-6"></div>
-            <input type="text" id="dReceiptNoReason" placeholder="Enter reason..." />
-          </div>
-          <div id="dReceiptYesFields" class="hidden">
-            <div class="form-group">
-              <label>3. Receipt Receiver's Name</label>
-              <div id="dReceiverChips" class="chip-wrap mb-6"></div>
-              <input type="text" id="dReceiverName" placeholder="Staff who received the signed receipt" />
+          <!-- A: OUTWARD RECEIPT HANDOVER -->
+          <div id="dStage3OutwardWrap">
+            <div id="dBatchReportBanner" class="som-strip hidden">
+              <span class="som-strip-title" id="dBatchReportText">Batch Reporting</span>
+              <button type="button" id="btnCancelBatchReport" class="btn-mini">Single Mode</button>
             </div>
             <div class="form-group">
-              <label>4. Date & Time of Receiving</label>
-              <div class="dt-controls">
-                <input type="datetime-local" id="dReportedDT" />
-                <button type="button" class="btn-mini" data-step-dt="dReportedDT" data-days="-1">−1d</button>
-                <button type="button" class="btn-mini" data-step-dt="dReportedDT" data-days="1">+1d</button>
-                <button type="button" class="btn-mini accent" data-now-dt="dReportedDT">Now</button>
+              <label>1. Given the Receipt?</label>
+              <div class="toggle-row" id="dReceiptGivenGroup">
+                <button type="button" class="toggle-btn" data-val="Yes">Yes (Given)</button>
+                <button type="button" class="toggle-btn" data-val="No">No (Not Given)</button>
+              </div>
+            </div>
+            <div id="dReceiptNoBox" class="no-reason-box hidden">
+              <label class="danger-text">2. Reason Why Receipt Was Not Given (Required)</label>
+              <div id="dReceiptNoChips" class="chip-wrap mb-6"></div>
+              <input type="text" id="dReceiptNoReason" placeholder="Enter reason..." />
+            </div>
+            <div id="dReceiptYesFields" class="hidden">
+              <div class="form-group">
+                <label>3. Receipt Receiver's Name</label>
+                <div id="dReceiverChips" class="chip-wrap mb-6"></div>
+                <input type="text" id="dReceiverName" placeholder="Staff who received the signed receipt" />
+              </div>
+              <div class="form-group">
+                <label>4. Date & Time of Receiving</label>
+                <div class="dt-controls">
+                  <input type="datetime-local" id="dReportedDT" />
+                  <button type="button" class="btn-mini" data-step-dt="dReportedDT" data-days="-1">−1d</button>
+                  <button type="button" class="btn-mini" data-step-dt="dReportedDT" data-days="1">+1d</button>
+                  <button type="button" class="btn-mini accent" data-now-dt="dReportedDT">Now</button>
+                </div>
               </div>
             </div>
           </div>
+
+          <!-- B: ROUND-TRIP FINAL RETURN TO OUR OFFICE -->
+          <div id="dStage3RoundTripWrap" class="hidden">
+            <div class="form-group">
+              <label>1. Returned & Handed Over To (Our Office Staff)</label>
+              <div id="dRtReturnReceiverChips" class="chip-wrap mb-6"></div>
+              <input type="text" id="dRtReturnReceiverName" placeholder="Staff/Section in our office who received the returned file..." />
+            </div>
+            <div class="form-group">
+              <label>2. Date & Time of Return to Our Office</label>
+              <div class="dt-controls">
+                <input type="datetime-local" id="dRtReturnDT" />
+                <button type="button" class="btn-mini" data-step-dt="dRtReturnDT" data-days="-1">−1d</button>
+                <button type="button" class="btn-mini" data-step-dt="dRtReturnDT" data-days="1">+1d</button>
+                <button type="button" class="btn-mini accent" data-now-dt="dRtReturnDT">Now</button>
+              </div>
+            </div>
+          </div>
+
           <button type="button" id="btnSaveDStage3" class="btn btn-success btn-block mt-12">Save Stage 3 & Move to History</button>
         </div>
       </section>
@@ -552,10 +684,11 @@
       <div class="row-between mb-8">
         <div class="chip-scroll" id="dTaskUrgencyFilters">
           <button type="button" class="batch-chip active" data-durg="ALL">All</button>
-          <button type="button" class="batch-chip" data-durg="OUTWARD">📤 Outward</button>
-          <button type="button" class="batch-chip" data-durg="INWARD">📥 Inward</button>
+          <button type="button" class="batch-chip" data-durg="Outward">📤 Delivery</button>
+          <button type="button" class="batch-chip" data-durg="Inward">📥 Collection</button>
+          <button type="button" class="batch-chip" data-durg="Enquiry">🔍 Enquiry</button>
+          <button type="button" class="batch-chip" data-durg="Round-Trip">🔄 Round-Trip</button>
           <button type="button" class="batch-chip" data-durg="Very Urgent">Very Urgent</button>
-          <button type="button" class="batch-chip" data-durg="Urgent">Urgent</button>
         </div>
         <button type="button" id="btnSortTasksAuto" class="btn-mini accent">⇅ Auto Sort</button>
       </div>
@@ -565,7 +698,7 @@
     <div id="dsub-unreported" class="dsub-panel hidden">
       <section class="card">
         <div class="row-between">
-          <span class="micro-label" style="margin:0;">Outward tasks awaiting receipt handover (<span id="dSelectedUnrepCount">0</span>)</span>
+          <span class="micro-label" style="margin:0;">Awaiting receipt/reply reporting (<span id="dSelectedUnrepCount">0</span>)</span>
           <div class="row-gap">
             <button type="button" id="btnSelectAllUnrep" class="btn-mini">All</button>
             <button type="button" id="btnBatchReportUnrep" class="btn btn-success btn-sm">Report Selected →</button>
@@ -578,7 +711,7 @@
     <div id="dsub-history" class="dsub-panel hidden">
       <section class="card">
         <div class="row-gap">
-          <input type="text" id="dHistorySearch" placeholder="Search file no, receiver, description..." />
+          <input type="text" id="dHistorySearch" placeholder="Search file no, enquiry, receiver, office..." />
           <select id="dHistorySort" style="max-width:145px;">
             <option value="NEWEST">Sort: Newest</option>
             <option value="OLDEST">Sort: Oldest</option>
@@ -588,9 +721,11 @@
         </div>
         <div class="row-gap mt-8" style="flex-wrap:wrap;">
           <select id="dHistoryFilterDirection" style="flex:1; min-width:120px;">
-            <option value="ALL">Direction: All</option>
-            <option value="Outward">📤 Outward (Delivered)</option>
-            <option value="Inward">📥 Inward (Collected)</option>
+            <option value="ALL">Type: All</option>
+            <option value="Outward">📤 Delivery</option>
+            <option value="Inward">📥 Collection</option>
+            <option value="Enquiry">🔍 Enquiry</option>
+            <option value="Round-Trip">🔄 Round-Trip</option>
           </select>
           <select id="dHistoryFilterStatus" style="flex:1; min-width:120px;">
             <option value="ALL">Receipt: All</option>
@@ -609,7 +744,7 @@
             <option value="ALL">Designation: All</option>
           </select>
           <select id="dHistoryFilterReceiver" style="flex:1; min-width:120px;">
-            <option value="ALL">Receiver: All</option>
+            <option value="ALL">Receiver / Enquirer: All</option>
           </select>
         </div>
         <div class="row-gap mt-8">
@@ -903,7 +1038,7 @@
     </div>
   </div>
 
-  <!-- Read-Only Postage SOM Detailed Report Modal (with Protected Edit & Single Delete) -->
+  <!-- Read-Only Postage SOM Detailed Report Modal -->
   <div id="postageReportModal" class="modal hidden no-print">
     <div class="modal-card" style="max-width:460px; max-height:90vh; overflow-y:auto;">
       <div class="row-between">
@@ -911,8 +1046,6 @@
         <button type="button" id="btnClosePostageReport" class="btn btn-secondary btn-sm">×</button>
       </div>
       <div id="postageReportBody" class="mt-8"></div>
-
-      <!-- Edit Warning Box -->
       <div id="postageEditWarningBox" class="no-reason-box hidden mt-12">
         <div class="small" style="font-weight:800; color:var(--danger);">⚠️ Warning: Edit SOM Record</div>
         <div class="small mt-6">Unlock this SOM entry only if correcting an error. Original dates and times will be preserved.</div>
@@ -921,8 +1054,6 @@
           <button type="button" id="btnCancelPostageEditWarn" class="btn btn-secondary btn-sm">Cancel</button>
         </div>
       </div>
-
-      <!-- Delete Warning Box (Single Record Only) -->
       <div id="postageDeleteWarningBox" class="no-reason-box hidden mt-12">
         <div class="small" style="font-weight:800; color:var(--danger);">🗑️ Warning: Permanently Delete This SOM?</div>
         <div class="small mt-6">This will permanently delete this SOM record and its barcodes from Google Sheets. This cannot be undone.</div>
@@ -931,7 +1062,6 @@
           <button type="button" id="btnCancelPostageDeleteWarn" class="btn btn-secondary btn-sm">Cancel</button>
         </div>
       </div>
-
       <div id="postageReportFooter" class="row-between mt-12">
         <div class="row-gap">
           <button type="button" id="btnRequestEditPostage" class="btn btn-secondary btn-sm">✎ Edit</button>
@@ -942,7 +1072,7 @@
     </div>
   </div>
 
-  <!-- Read-Only Local Delivery Report Modal (with Protected Edit & Single Delete) -->
+  <!-- Read-Only Local Delivery Report Modal -->
   <div id="deliveryReportModal" class="modal hidden no-print">
     <div class="modal-card" style="max-width:460px; max-height:90vh; overflow-y:auto;">
       <div class="row-between">
@@ -950,8 +1080,6 @@
         <button type="button" id="btnCloseDeliveryReport" class="btn btn-secondary btn-sm">×</button>
       </div>
       <div id="deliveryReportBody" class="mt-8"></div>
-
-      <!-- Edit Warning Box -->
       <div id="deliveryEditWarningBox" class="no-reason-box hidden mt-12">
         <div class="small" style="font-weight:800; color:var(--danger);">⚠️ Warning: Completed History Record</div>
         <div class="small mt-6">This task has already completed its lifecycle. Edit only if correcting a genuine mistake.</div>
@@ -960,8 +1088,6 @@
           <button type="button" id="btnCancelHistoryEditWarn" class="btn btn-secondary btn-sm">Cancel</button>
         </div>
       </div>
-
-      <!-- Delete Warning Box (Single Record Only) -->
       <div id="deliveryDeleteWarningBox" class="no-reason-box hidden mt-12">
         <div class="small" style="font-weight:800; color:var(--danger);">🗑️ Warning: Permanently Delete This Record?</div>
         <div class="small mt-6">This will permanently remove this record from History and Google Sheets. This cannot be undone.</div>
@@ -970,7 +1096,6 @@
           <button type="button" id="btnCancelHistoryDeleteWarn" class="btn btn-secondary btn-sm">Cancel</button>
         </div>
       </div>
-
       <div id="deliveryReportFooter" class="row-between mt-12">
         <div class="row-gap">
           <button type="button" id="btnRequestEditHistory" class="btn btn-secondary btn-sm">✎ Edit</button>
