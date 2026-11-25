@@ -344,7 +344,9 @@
         </div>
       </section>
 
-      <!-- STAGE 1 (SHARED ACROSS ALL 4 MODES WITH CONTEXTUAL FIELDS) -->
+      <!-- =============================================================== -->
+      <!-- STAGE 1                                                         -->
+      <!-- =============================================================== -->
       <section class="accordion-card" id="dCard1">
         <div class="accordion-header" data-dstage="1">
           <div class="row-gap">
@@ -357,6 +359,7 @@
           <span class="chevron" id="dChev1">▶</span>
         </div>
         <div class="accordion-body collapsed" id="dBody1">
+          <!-- 1. Date & Time (All Modes) -->
           <div class="form-group">
             <label id="lblDCreatedDT">1. Date & Time</label>
             <div class="dt-controls">
@@ -367,61 +370,68 @@
             </div>
           </div>
 
-          <!-- ENQUIRER FIELD (ONLY SHOWN FOR ENQUIRY MODE) -->
-          <div class="form-group hidden" id="dEnquirerGroup">
-            <label>2. Enquirer (Staff / Clerk Asking)</label>
-            <div id="dEnquirerChips" class="chip-wrap mb-6"></div>
-            <input type="text" id="dEnquirerName" placeholder="Name of clerk/staff requesting enquiry..." />
-          </div>
-
-          <div class="form-group">
-            <label id="lblDOfficeName">2. To Office Name</label>
-            <div id="dOfficeChips" class="chip-wrap mb-6"></div>
-            <input type="text" id="dOfficeName" list="dOfficeList" placeholder="Select or type office name..." />
-            <datalist id="dOfficeList"></datalist>
-          </div>
-
-          <!-- ENQUIRY TEXT FIELD (ONLY SHOWN FOR ENQUIRY MODE) -->
-          <div class="form-group hidden" id="dEnquiryTextGroup">
-            <label>4. Enquiry / Questions</label>
-            <textarea id="dEnquiryText" rows="3" placeholder="Enter bill number, file number, or enquiry details..."></textarea>
-          </div>
-
-          <!-- DOCUMENT / FILE FIELDS (SHOWN FOR DELIVERY, COLLECTION & ROUND-TRIP; HIDDEN FOR ENQUIRY) -->
-          <div id="dDocumentFieldsWrap">
+          <!-- ENQUIRY STAGE 1 FIELDS -->
+          <div id="dEnquiryStage1Wrap" class="hidden">
             <div class="form-group">
+              <label>2. Enquirer</label>
+              <div id="dEnquirerChips" class="chip-wrap mb-6"></div>
+              <input type="text" id="dEnquirerName" placeholder="Staff / clerk requesting enquiry..." />
+            </div>
+            <div class="form-group">
+              <label>3. To Office</label>
+              <div id="dEnquiryOfficeChips" class="chip-wrap mb-6"></div>
+              <input type="text" id="dEnquiryOfficeName" list="dOfficeList" placeholder="Select or type office name..." />
+            </div>
+            <div class="form-group">
+              <div class="row-between mb-6">
+                <label style="margin:0;">4. Enquiry / ies</label>
+                <button type="button" id="btnAddEnquiryItem" class="btn-mini accent">+ Add Enquiry</button>
+              </div>
+              <div id="dDynamicEnquiriesWrap"></div>
+            </div>
+          </div>
+
+          <!-- DOCUMENT STAGE 1 FIELDS (DELIVERY, COLLECTION & ROUND-TRIP) -->
+          <div id="dDocumentStage1Wrap">
+            <!-- Round-Trip: File Given by -->
+            <div class="form-group hidden" id="dRtFileGivenByGroup">
+              <label>2. File Given by</label>
+              <div id="dFileGivenByChips" class="chip-wrap mb-6"></div>
+              <input type="text" id="dFileGivenBy" placeholder="Staff who handed over the file..." />
+            </div>
+
+            <!-- Delivery / Collection: To / From Office Name -->
+            <div class="form-group" id="dOfficeNameGroup">
+              <label id="lblDOfficeName">2. To Office Name</label>
+              <div id="dOfficeChips" class="chip-wrap mb-6"></div>
+              <input type="text" id="dOfficeName" list="dOfficeList" placeholder="Select or type office name..." />
+            </div>
+            <datalist id="dOfficeList"></datalist>
+
+            <!-- Delivery / Collection: Designation -->
+            <div class="form-group" id="dDesignationGroup">
               <label id="lblDDesignation">3. Designation</label>
               <div id="dDesigChips" class="chip-wrap mb-6"></div>
               <input type="text" id="dDesignation" list="dDesigList" placeholder="Select or type designation..." />
-              <datalist id="dDesigList"></datalist>
             </div>
+            <datalist id="dDesigList"></datalist>
+
             <div class="form-group">
               <label id="lblDSection">4. Section</label>
               <div id="dSectionChips" class="chip-wrap mb-6"></div>
               <input type="text" id="dSection" list="dSectionList" placeholder="Select or type section..." />
-              <datalist id="dSectionList"></datalist>
             </div>
-
-            <!-- ROUND-TRIP PURPOSE (ONLY SHOWN FOR ROUND-TRIP MODE) -->
-            <div class="form-group hidden" id="dRoundTripPurposeGroup">
-              <label>Purpose / Action Required</label>
-              <div id="dPurposeChips" class="chip-wrap mb-6">
-                <button type="button" class="smart-chip" data-dfill="dRoundTripPurpose" data-dval="For Signature">For Signature</button>
-                <button type="button" class="smart-chip" data-dfill="dRoundTripPurpose" data-dval="Counter-Signature">Counter-Signature</button>
-                <button type="button" class="smart-chip" data-dfill="dRoundTripPurpose" data-dval="Verification">Verification</button>
-                <button type="button" class="smart-chip" data-dfill="dRoundTripPurpose" data-dval="Approval / Sanction">Approval / Sanction</button>
-              </div>
-              <input type="text" id="dRoundTripPurpose" placeholder="e.g. For Signature & Return..." />
-            </div>
+            <datalist id="dSectionList"></datalist>
 
             <div class="form-group">
-              <label>5. Nature of File / Document</label>
+              <label id="lblDNature">5. Nature of File / Document</label>
               <div id="dNatureChips" class="chip-wrap mb-6"></div>
               <input type="text" id="dNature" list="dNatureList" value="File" placeholder="e.g. File, Tapal, Cheque, Bill..." />
-              <datalist id="dNatureList"></datalist>
             </div>
+            <datalist id="dNatureList"></datalist>
+
             <div class="form-group">
-              <label id="lblDItemCount">6. No. of File</label>
+              <label id="lblDItemCount">6. No. of File / Document</label>
               <div class="row-gap">
                 <div class="stepper-row" style="max-width:160px;">
                   <button type="button" class="step-btn" id="btnDCountMinus">−</button>
@@ -435,16 +445,16 @@
               </div>
             </div>
             <div class="form-group">
-              <label id="lblDItemNumbers">7. File No.</label>
+              <label id="lblDItemNumbers">7. File Number</label>
               <div id="dPatternChips" class="chip-wrap mb-6"></div>
               <div id="dDynamicItemsWrap"></div>
             </div>
             <div class="form-group">
-              <label>8. Description <span class="muted small">(Optional)</span></label>
+              <label id="lblDDescription">8. Description <span class="muted small">(Optional)</span></label>
               <input type="text" id="dDescription" placeholder="Brief subject or note..." />
             </div>
             <div class="form-group">
-              <label>9. Attachments?</label>
+              <label id="lblDAttachments">9. Attachments?</label>
               <div class="toggle-row" id="dAttachToggleGroup">
                 <button type="button" class="toggle-btn" data-val="Yes">Yes</button>
                 <button type="button" class="toggle-btn selected" data-val="No">No</button>
@@ -452,7 +462,7 @@
             </div>
             <div id="dAttachmentsBox" class="dynamic-schema-box hidden">
               <div class="form-group" style="margin-top:0;">
-                <label>10. No. of Attachments</label>
+                <label>No. of Attachments</label>
                 <div class="stepper-row" style="max-width:160px;">
                   <button type="button" class="step-btn" id="btnDAttachMinus">−</button>
                   <input type="number" id="dAttachCount" value="1" min="1" max="20" />
@@ -460,12 +470,12 @@
                 </div>
               </div>
               <div class="form-group">
-                <label>11. Attachment Details</label>
+                <label>Attachment Details</label>
                 <div id="dAttachRowsWrap"></div>
               </div>
             </div>
             <div class="form-group" id="dPlannedDTGroup">
-              <label>12. Planned Delivery Time</label>
+              <label>10. Planned Delivery Time</label>
               <div class="dt-controls">
                 <input type="datetime-local" id="dPlannedDT" data-allow-future="true" />
                 <button type="button" class="btn-mini accent" id="btnDPlanToday3PM">3 PM</button>
@@ -486,7 +496,9 @@
         </div>
       </section>
 
-      <!-- STAGE 2 (ADAPTS FOR DELIVERY/COLLECTION, ENQUIRY REPLY, OR ROUND-TRIP STOPS) -->
+      <!-- =============================================================== -->
+      <!-- STAGE 2                                                         -->
+      <!-- =============================================================== -->
       <section class="accordion-card" id="dCard2">
         <div class="accordion-header" data-dstage="2">
           <div class="row-gap">
@@ -499,7 +511,7 @@
           <span class="chevron" id="dChev2">▶</span>
         </div>
         <div class="accordion-body collapsed" id="dBody2">
-          <!-- A: STANDARD DELIVERY / COLLECTION STAGE 2 -->
+          <!-- A: DELIVERY & COLLECTION STAGE 2 -->
           <div id="dStage2StandardWrap">
             <div class="form-group">
               <label>1. Delivery Status</label>
@@ -533,14 +545,19 @@
             </div>
           </div>
 
-          <!-- B: ENQUIRY REPLY & REPORTING STAGE 2 -->
+          <!-- B: ENQUIRY STAGE 2 (REPLY, RESPONDENT, DATE & TIME OF REPLY) -->
           <div id="dStage2EnquiryWrap" class="hidden">
             <div class="form-group">
-              <label>1. Reply Received</label>
-              <textarea id="dReplyText" rows="3" placeholder="Write the reply / explanation obtained from the office..."></textarea>
+              <label>1. Reply</label>
+              <textarea id="dReplyText" rows="3" placeholder="Enter the reply obtained..."></textarea>
             </div>
             <div class="form-group">
-              <label>2. Date & Time of Reply</label>
+              <label>2. Respondent</label>
+              <div id="dRespondentChips" class="chip-wrap mb-6"></div>
+              <input type="text" id="dRespondentName" placeholder="Name / designation of person who gave the reply..." />
+            </div>
+            <div class="form-group">
+              <label>3. Date & Time of Reply</label>
               <div class="dt-controls">
                 <input type="datetime-local" id="dReplyDT" />
                 <button type="button" class="btn-mini" data-step-dt="dReplyDT" data-days="-1">−1d</button>
@@ -548,67 +565,20 @@
                 <button type="button" class="btn-mini accent" data-now-dt="dReplyDT">Now</button>
               </div>
             </div>
-            <div class="form-group">
-              <label>3. Report Status (Conveyed to Enquirer?)</label>
-              <div class="toggle-row" id="dEnquiryReportStatusGroup">
-                <button type="button" class="toggle-btn" data-val="Reported">Reported</button>
-                <button type="button" class="toggle-btn" data-val="Not Reported">Not Reported Yet</button>
-              </div>
-            </div>
-            <div id="dEnquiryReportedDetails" class="hidden">
-              <div class="form-group">
-                <label>4. Date & Time of Reporting</label>
-                <div class="dt-controls">
-                  <input type="datetime-local" id="dEnquiryReportedDT" />
-                  <button type="button" class="btn-mini" data-step-dt="dEnquiryReportedDT" data-days="-1">−1d</button>
-                  <button type="button" class="btn-mini" data-step-dt="dEnquiryReportedDT" data-days="1">+1d</button>
-                  <button type="button" class="btn-mini accent" data-now-dt="dEnquiryReportedDT">Now</button>
-                </div>
-              </div>
-              <div class="form-group">
-                <label>5. Method of Reporting</label>
-                <div class="chip-wrap" id="dReportMethodGroup">
-                  <button type="button" class="smart-chip" data-rmethod="Direct">Direct</button>
-                  <button type="button" class="smart-chip" data-rmethod="Phone Call">Phone Call</button>
-                  <button type="button" class="smart-chip" data-rmethod="WhatsApp">WhatsApp</button>
-                  <button type="button" class="smart-chip" data-rmethod="SMS">SMS</button>
-                  <button type="button" class="smart-chip" data-rmethod="Voice Message">Voice Message</button>
-                </div>
-                <input type="text" id="dReportMethodInput" class="mt-6" placeholder="Select pill or type method..." />
-              </div>
-            </div>
-            <div class="form-group">
-              <label>6. Comments</label>
-              <input type="text" id="dEnquiryComments" placeholder="Additional remarks..." />
-            </div>
           </div>
 
-          <!-- C: ROUND-TRIP MULTI-OFFICE MOVEMENT LOG STAGE 2 -->
+          <!-- C: ROUND-TRIP STAGE 2 (RECURSIVE OFFICE DETAILS CHAIN) -->
           <div id="dStage2RoundTripWrap" class="hidden">
-            <div class="row-between mb-6">
-              <label style="margin:0;">Office Movement / Processing Stops</label>
-              <button type="button" id="btnAddRoundTripStop" class="btn-mini accent">+ Add Office Stop</button>
-            </div>
             <div id="dRoundTripStopsList"></div>
-
-            <div class="form-group mt-8">
-              <label>Current Document Custody</label>
-              <div class="toggle-row" id="dRoundTripCustodyGroup">
-                <button type="button" class="toggle-btn selected" data-val="With Me / In Transit">With Me / In Transit</button>
-                <button type="button" class="toggle-btn" data-val="Left at Office for Processing">Left at Office</button>
-              </div>
-            </div>
-            <div class="form-group">
-              <label>Comments</label>
-              <input type="text" id="dRoundTripComments" placeholder="Movement notes..." />
-            </div>
           </div>
 
           <button type="button" id="btnSaveDStage2" class="btn btn-primary btn-block mt-12">Save Stage 2</button>
         </div>
       </section>
 
-      <!-- STAGE 3 (FOR OUTWARD DELIVERY RECEIPT REPORTING OR ROUND-TRIP FINAL RETURN TO OUR OFFICE) -->
+      <!-- =============================================================== -->
+      <!-- STAGE 3                                                         -->
+      <!-- =============================================================== -->
       <section class="accordion-card" id="dCard3">
         <div class="accordion-header" data-dstage="3">
           <div class="row-gap">
@@ -621,7 +591,7 @@
           <span class="chevron" id="dChev3">▶</span>
         </div>
         <div class="accordion-body collapsed" id="dBody3">
-          <!-- A: OUTWARD RECEIPT HANDOVER -->
+          <!-- A: OUTWARD DELIVERY STAGE 3 -->
           <div id="dStage3OutwardWrap">
             <div id="dBatchReportBanner" class="som-strip hidden">
               <span class="som-strip-title" id="dBatchReportText">Batch Reporting</span>
@@ -657,21 +627,81 @@
             </div>
           </div>
 
-          <!-- B: ROUND-TRIP FINAL RETURN TO OUR OFFICE -->
-          <div id="dStage3RoundTripWrap" class="hidden">
+          <!-- B: ENQUIRY STAGE 3 (REPORTING TO ENQUIRER) -->
+          <div id="dStage3EnquiryWrap" class="hidden">
             <div class="form-group">
-              <label>1. Returned & Handed Over To (Our Office Staff)</label>
-              <div id="dRtReturnReceiverChips" class="chip-wrap mb-6"></div>
-              <input type="text" id="dRtReturnReceiverName" placeholder="Staff/Section in our office who received the returned file..." />
+              <label>1. Report Status</label>
+              <div class="toggle-row" id="dEnquiryReportStatusGroup">
+                <button type="button" class="toggle-btn" data-val="Reported">Reported</button>
+                <button type="button" class="toggle-btn" data-val="Not Reported">Not Reported</button>
+              </div>
+            </div>
+            <div id="dEnquiryReportedDetails" class="hidden">
+              <div class="form-group">
+                <label>2. Date & Time of Reporting</label>
+                <div class="dt-controls">
+                  <input type="datetime-local" id="dEnquiryReportedDT" />
+                  <button type="button" class="btn-mini" data-step-dt="dEnquiryReportedDT" data-days="-1">−1d</button>
+                  <button type="button" class="btn-mini" data-step-dt="dEnquiryReportedDT" data-days="1">+1d</button>
+                  <button type="button" class="btn-mini accent" data-now-dt="dEnquiryReportedDT">Now</button>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>3. Method of Reporting</label>
+                <div class="chip-wrap" id="dReportMethodGroup">
+                  <button type="button" class="smart-chip" data-rmethod="Direct">Direct</button>
+                  <button type="button" class="smart-chip" data-rmethod="Phone Call">Phone Call</button>
+                  <button type="button" class="smart-chip" data-rmethod="SMS">SMS</button>
+                  <button type="button" class="smart-chip" data-rmethod="WhatsApp">WhatsApp</button>
+                  <button type="button" class="smart-chip" data-rmethod="Voice Message">Voice Message</button>
+                </div>
+                <input type="text" id="dReportMethodInput" class="mt-6" placeholder="Select pill or type method..." />
+              </div>
             </div>
             <div class="form-group">
-              <label>2. Date & Time of Return to Our Office</label>
+              <label>4. Comments</label>
+              <input type="text" id="dEnquiryComments" placeholder="Reporting notes..." />
+            </div>
+          </div>
+
+          <!-- C: ROUND-TRIP STAGE 3 (BACK TO OFFICE) -->
+          <div id="dStage3RoundTripWrap" class="hidden">
+            <div class="form-group">
+              <label>1. File / Doc Received By</label>
+              <div id="dRtDocReceiverChips" class="chip-wrap mb-6"></div>
+              <input type="text" id="dRtDocReceiverName" placeholder="Staff who received the returned file/doc..." />
+            </div>
+            <div class="form-group">
+              <label>2. Date & Time</label>
               <div class="dt-controls">
                 <input type="datetime-local" id="dRtReturnDT" />
                 <button type="button" class="btn-mini" data-step-dt="dRtReturnDT" data-days="-1">−1d</button>
                 <button type="button" class="btn-mini" data-step-dt="dRtReturnDT" data-days="1">+1d</button>
                 <button type="button" class="btn-mini accent" data-now-dt="dRtReturnDT">Now</button>
               </div>
+            </div>
+            <div class="form-group">
+              <label>3. Receipt Received?</label>
+              <div class="toggle-row" id="dRtReceiptGivenGroup">
+                <button type="button" class="toggle-btn" data-val="Yes">Yes (Given)</button>
+                <button type="button" class="toggle-btn" data-val="No">No (Not Given)</button>
+              </div>
+            </div>
+            <div id="dRtReceiptNoBox" class="no-reason-box hidden">
+              <label class="danger-text">Reason Why Receipt Was Not Received (Required)</label>
+              <div id="dRtReceiptNoChips" class="chip-wrap mb-6"></div>
+              <input type="text" id="dRtReceiptNoReason" placeholder="Enter reason..." />
+            </div>
+            <div id="dRtReceiptYesFields" class="hidden">
+              <div class="form-group">
+                <label>Receipt Received By (Staff Name)</label>
+                <div id="dRtReceiptReceiverChips" class="chip-wrap mb-6"></div>
+                <input type="text" id="dRtReceiptReceiverName" placeholder="Staff who received the receipt..." />
+              </div>
+            </div>
+            <div class="form-group">
+              <label>4. Comments</label>
+              <input type="text" id="dRtComments" placeholder="Final return notes..." />
             </div>
           </div>
 
@@ -711,7 +741,7 @@
     <div id="dsub-history" class="dsub-panel hidden">
       <section class="card">
         <div class="row-gap">
-          <input type="text" id="dHistorySearch" placeholder="Search file no, enquiry, receiver, office..." />
+          <input type="text" id="dHistorySearch" placeholder="Search file no, enquiry, respondent, receiver..." />
           <select id="dHistorySort" style="max-width:145px;">
             <option value="NEWEST">Sort: Newest</option>
             <option value="OLDEST">Sort: Oldest</option>
@@ -744,7 +774,7 @@
             <option value="ALL">Designation: All</option>
           </select>
           <select id="dHistoryFilterReceiver" style="flex:1; min-width:120px;">
-            <option value="ALL">Receiver / Enquirer: All</option>
+            <option value="ALL">Staff / Person: All</option>
           </select>
         </div>
         <div class="row-gap mt-8">
