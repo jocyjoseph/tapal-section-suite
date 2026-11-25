@@ -6,6 +6,7 @@ const AppStore = {
   addresses: [],
   onDataUpdatedCallbacks: [],
   isSyncing: false,
+  UNSYNCED_KEYS_STORAGE: "tapal_unsynced_records_v1",
 
   init() {
     const hardcoded = (CONFIG.DEFAULT_API_URL && !CONFIG.DEFAULT_API_URL.includes("PASTE_YOUR"))
@@ -60,6 +61,47 @@ const AppStore = {
     }));
   },
 
+  getUnsyncedRegistry() {
+    try {
+      return JSON.parse(localStorage.getItem(this.UNSYNCED_KEYS_STORAGE) || '{"batches":{},"deliveries":{},"deletedBatches":[],"deletedDeliveries":[]}');
+    } catch (e) {
+      return { batches: {}, deliveries: {}, deletedBatches: [], deletedDeliveries: [] };
+    }
+  },
+
+  saveUnsyncedRegistry(reg) {
+    localStorage.setItem(this.UNSYNCED_KEYS_STORAGE, JSON.stringify(reg));
+  },
+
+  recordLocalMutation(action, dataObj) {
+    const reg = this.getUnsyncedRegistry();
+    if (action === "saveBatch" && dataObj && dataObj.Batch_ID) {
+      reg.batches[String(dataObj.Batch_ID)] = { ...dataObj };
+      reg.deletedBatches = reg.deletedBatches.filter(id => id !== String(dataObj.Batch_ID));
+    } else if (action === "deleteBatch" && dataObj && dataObj.Batch_ID) {
+      delete reg.batches[String(dataObj.Batch_ID)];
+      if (!reg.deletedBatches.includes(String(dataObj.Batch_ID))) {
+        reg.deletedBatches.push(String(dataObj.Batch_ID));
+      }
+    } else if (action === "saveDelivery" && dataObj && dataObj.Task_ID) {
+      reg.deliveries[String(dataObj.Task_ID)] = { ...dataObj };
+      reg.deletedDeliveries = reg.deletedDeliveries.filter(id => id !== String(dataObj.Task_ID));
+    } else if (action === "saveDeliveryBatch" && Array.isArray(dataObj)) {
+      dataObj.forEach(item => {
+        if (item && item.Task_ID) {
+          reg.deliveries[String(item.Task_ID)] = { ...item };
+          reg.deletedDeliveries = reg.deletedDeliveries.filter(id => id !== String(item.Task_ID));
+        }
+      });
+    } else if (action === "deleteDelivery" && dataObj && dataObj.Task_ID) {
+      delete reg.deliveries[String(dataObj.Task_ID)];
+      if (!reg.deletedDeliveries.includes(String(dataObj.Task_ID))) {
+        reg.deletedDeliveries.push(String(dataObj.Task_ID));
+      }
+    }
+    this.saveUnsyncedRegistry(reg);
+  },
+
   dedupeByKey(arr, key) {
     const seen = new Set();
     return arr.filter(item => {
@@ -87,6 +129,21 @@ const AppStore = {
       if (!silent && badge) badge.textContent = "Syncing...";
       await this.flushQueue();
 
+      // Re-push any unconfirmed local records before fetching
+      const reg = this.getUnsyncedRegistry();
+      for (const bId of Object.keys(reg.batches)) {
+        await this.sendPostRaw("saveBatch", reg.batches[bId]);
+      }
+      for (const delBId of reg.deletedBatches) {
+        await this.sendPostRaw("deleteBatch", { Batch_ID: delBId });
+      }
+      for (const tId of Object.keys(reg.deliveries)) {
+        await this.sendPostRaw("saveDelivery", reg.deliveries[tId]);
+      }
+      for (const delTId of reg.deletedDeliveries) {
+        await this.sendPostRaw("deleteDelivery", { Task_ID: delTId });
+      }
+
       const sep = this.apiUrl.includes("?") ? "&" : "?";
       const res = await fetch(`${this.apiUrl}${sep}action=getAllData&_t=${Date.now()}`, {
         cache: "no-store"
@@ -94,36 +151,70 @@ const AppStore = {
       const data = await res.json();
 
       if (data.status === "ok") {
-        this.batches = this.dedupeByKey(data.batches || [], "Batch_ID");
+        const remoteBatchMap = new Map();
+        (data.batches || []).forEach(b => {
+          const id = String(b.Batch_ID || "").trim();
+          if (id && !reg.deletedBatches.includes(id)) {
+            remoteBatchMap.set(id, b);
+            // Confirmed present in Google Sheets -> clear from pending registry
+            if (reg.batches[id]) delete reg.batches[id];
+          }
+        });
+        reg.deletedBatches = reg.deletedBatches.filter(id =>
+          (data.batches || []).some(b => String(b.Batch_ID || "").trim() === id)
+        );
+        // Merge any local batches not yet returned by Google Sheets so reload never wipes them
+        Object.keys(reg.batches).forEach(id => {
+          remoteBatchMap.set(id, reg.batches[id]);
+        });
+        this.batches = this.dedupeByKey(Array.from(remoteBatchMap.values()), "Batch_ID");
+
         this.barcodes = data.barcodes || [];
-        this.deliveries = this.dedupeByKey((data.deliveries || []).map((t, idx) => ({
-          Task_ID: String(t.Task_ID || `TASK-${idx + 1}`),
-          Direction: String(t.Direction || "Outward"),
-          Created_DateTime: String(t.Created_DateTime || ""),
-          Office_Name: String(t.Office_Name || ""),
-          Designation: String(t.Designation || ""),
-          Section: String(t.Section || ""),
-          Nature: String(t.Nature || "File"),
-          Item_Count: Number(t.Item_Count || 1),
-          Nature_Mode: String(t.Nature_Mode || "Same"),
-          Items_JSON: typeof t.Items_JSON === "string" ? t.Items_JSON : JSON.stringify(t.Items_JSON || []),
-          Items_Summary: String(t.Items_Summary || ""),
-          Description: String(t.Description || ""),
-          Has_Attachments: String(t.Has_Attachments || "No"),
-          Attachment_Count: Number(t.Attachment_Count || 0),
-          Attachments_JSON: typeof t.Attachments_JSON === "string" ? t.Attachments_JSON : JSON.stringify(t.Attachments_JSON || []),
-          Planned_Delivery_DT: String(t.Planned_Delivery_DT || ""),
-          Urgency: String(t.Urgency || "Normal"),
-          Delivery_Status: String(t.Delivery_Status || ""),
-          Not_Delivered_Reason: String(t.Not_Delivered_Reason || ""),
-          Completed_DateTime: String(t.Completed_DateTime || ""),
-          Stage2_Receiver_Name: String(t.Stage2_Receiver_Name || ""),
-          Stage2_Comments: String(t.Stage2_Comments || ""),
-          Receipt_Given: String(t.Receipt_Given || ""),
-          Receipt_No_Reason: String(t.Receipt_No_Reason || ""),
-          Receiver_Name: String(t.Receiver_Name || ""),
-          Reported_DateTime: String(t.Reported_DateTime || "")
-        })), "Task_ID");
+
+        const remoteDelivMap = new Map();
+        (data.deliveries || []).forEach((t, idx) => {
+          const id = String(t.Task_ID || `TASK-${idx + 1}`).trim();
+          if (id && !reg.deletedDeliveries.includes(id)) {
+            remoteDelivMap.set(id, {
+              Task_ID: id,
+              Direction: String(t.Direction || "Outward"),
+              Created_DateTime: String(t.Created_DateTime || ""),
+              Office_Name: String(t.Office_Name || ""),
+              Designation: String(t.Designation || ""),
+              Section: String(t.Section || ""),
+              Nature: String(t.Nature || "File"),
+              Item_Count: Number(t.Item_Count || 1),
+              Nature_Mode: String(t.Nature_Mode || "Same"),
+              Items_JSON: typeof t.Items_JSON === "string" ? t.Items_JSON : JSON.stringify(t.Items_JSON || []),
+              Items_Summary: String(t.Items_Summary || ""),
+              Description: String(t.Description || ""),
+              Has_Attachments: String(t.Has_Attachments || "No"),
+              Attachment_Count: Number(t.Attachment_Count || 0),
+              Attachments_JSON: typeof t.Attachments_JSON === "string" ? t.Attachments_JSON : JSON.stringify(t.Attachments_JSON || []),
+              Planned_Delivery_DT: String(t.Planned_Delivery_DT || ""),
+              Urgency: String(t.Urgency || "Normal"),
+              Delivery_Status: String(t.Delivery_Status || ""),
+              Not_Delivered_Reason: String(t.Not_Delivered_Reason || ""),
+              Completed_DateTime: String(t.Completed_DateTime || ""),
+              Stage2_Receiver_Name: String(t.Stage2_Receiver_Name || ""),
+              Stage2_Comments: String(t.Stage2_Comments || ""),
+              Receipt_Given: String(t.Receipt_Given || ""),
+              Receipt_No_Reason: String(t.Receipt_No_Reason || ""),
+              Receiver_Name: String(t.Receiver_Name || ""),
+              Reported_DateTime: String(t.Reported_DateTime || "")
+            });
+            if (reg.deliveries[id]) delete reg.deliveries[id];
+          }
+        });
+        reg.deletedDeliveries = reg.deletedDeliveries.filter(id =>
+          (data.deliveries || []).some(t => String(t.Task_ID || "").trim() === id)
+        );
+        Object.keys(reg.deliveries).forEach(id => {
+          remoteDelivMap.set(id, reg.deliveries[id]);
+        });
+        this.deliveries = this.dedupeByKey(Array.from(remoteDelivMap.values()), "Task_ID");
+
+        this.saveUnsyncedRegistry(reg);
 
         if (data.addresses && data.addresses.length > 0) {
           this.addresses = data.addresses.map((a, idx) => ({
@@ -161,7 +252,17 @@ const AppStore = {
     }
   },
 
+  async sendPostRaw(action, dataObj) {
+    await fetch(this.apiUrl, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action, data: dataObj })
+    });
+  },
+
   async pushAction(action, dataObj) {
+    this.recordLocalMutation(action, dataObj);
     this.saveCache();
     this.notify();
 
@@ -170,17 +271,12 @@ const AppStore = {
     const badge = document.getElementById("syncStatus");
     try {
       if (badge) badge.textContent = "Saving...";
-      await fetch(this.apiUrl, {
-        method: "POST",
-        mode: "no-cors",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify({ action, data: dataObj })
-      });
+      await this.sendPostRaw(action, dataObj);
       if (badge) {
         badge.textContent = "Saved ✓";
         badge.className = "badge online";
       }
-      setTimeout(() => this.syncAll(true), 1500);
+      setTimeout(() => this.syncAll(true), 2000);
     } catch (e) {
       const q = JSON.parse(localStorage.getItem(CONFIG.QUEUE_KEY) || "[]");
       q.push({ action, data: dataObj });
@@ -196,12 +292,7 @@ const AppStore = {
     const q = JSON.parse(localStorage.getItem(CONFIG.QUEUE_KEY) || "[]");
     if (!q.length) return;
     for (const item of q) {
-      await fetch(this.apiUrl, {
-        method: "POST",
-        mode: "no-cors",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify(item)
-      });
+      await this.sendPostRaw(item.action, item.data);
     }
     localStorage.removeItem(CONFIG.QUEUE_KEY);
   },
@@ -243,12 +334,10 @@ const DateTimeHelper = {
     return d.toISOString().slice(0, 16);
   },
 
-  // Converts stored local or UTC ISO strings into local YYYY-MM-DDTHH:mm for datetime-local inputs
   toDateTimeLocalValue(raw) {
     if (!raw) return "";
     const str = String(raw).trim();
 
-    // Only slice directly when no timezone suffix ('Z' or +HH:mm / -HH:mm) is present
     if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(str)) {
       return str.slice(0, 16);
     }
