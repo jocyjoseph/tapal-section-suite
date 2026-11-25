@@ -52,11 +52,9 @@ const DeliveryModule = {
     document.getElementById("lblDOfficeName").textContent = isInward ? "2. From Office Name" : "2. To Office Name";
     document.getElementById("lblDSection").textContent = isInward ? "4. Receiving Section (Our Office)" : "4. Section";
 
-    // Hide Planned Delivery Time for Inward collections; show for Outward
     document.getElementById("dPlannedDTGroup").classList.toggle("hidden", isInward);
     document.getElementById("lblDUrgency").textContent = isInward ? "12. Urgency Scale" : "13. Urgency Scale";
 
-    // Stage 2 labels
     document.getElementById("dStage2Tag").textContent = isInward ? "STAGE 2 • HANDOVER TO OUR OFFICE" : "STAGE 2 • DELIVERY COMPLETION";
     document.getElementById("lblDCompletedDT").textContent = isInward ? "3. Handover Date & Time" : "3. Delivery Date & Time";
     document.getElementById("lblDStage2Receiver").textContent = isInward
@@ -69,7 +67,6 @@ const DeliveryModule = {
       ? "Save Stage 2 & Move to History"
       : "Save Stage 2";
 
-    // Stage 3 is only for Outward deliveries
     document.getElementById("dCard3").classList.toggle("hidden", isInward);
   },
 
@@ -135,23 +132,26 @@ const DeliveryModule = {
     if (stageNum === 1) {
       const inp = document.getElementById("dCreatedDT");
       if (!inp.value) {
-        inp.value = DateTimeHelper.nowLocalISO();
-        inp.max = inp.value;
+        const stored = DateTimeHelper.toDateTimeLocalValue(this.currentTask.Created_DateTime);
+        inp.value = stored || DateTimeHelper.nowLocalISO();
       }
+      inp.max = DateTimeHelper.nowLocalISO();
     }
     if (stageNum === 2) {
       const inp = document.getElementById("dCompletedDT");
       if (!inp.value) {
-        inp.value = DateTimeHelper.nowLocalISO();
-        inp.max = inp.value;
+        const stored = DateTimeHelper.toDateTimeLocalValue(this.currentTask.Completed_DateTime);
+        inp.value = stored || DateTimeHelper.nowLocalISO();
       }
+      inp.max = DateTimeHelper.nowLocalISO();
     }
     if (stageNum === 3) {
       const inp = document.getElementById("dReportedDT");
       if (!inp.value) {
-        inp.value = DateTimeHelper.nowLocalISO();
-        inp.max = inp.value;
+        const stored = DateTimeHelper.toDateTimeLocalValue(this.currentTask.Reported_DateTime);
+        inp.value = stored || DateTimeHelper.nowLocalISO();
       }
+      inp.max = DateTimeHelper.nowLocalISO();
     }
 
     [1, 2, 3].forEach(n => {
@@ -178,8 +178,8 @@ const DeliveryModule = {
         const inp = document.getElementById(id);
         if (!inp.value) {
           inp.value = DateTimeHelper.nowLocalISO();
-          inp.max = inp.value;
         }
+        inp.max = DateTimeHelper.nowLocalISO();
       });
     }
     [1, 2, 3].forEach(n => {
@@ -192,7 +192,7 @@ const DeliveryModule = {
     const dir = t.Direction || "Outward";
     this.applyDirectionUI(dir);
 
-    document.getElementById("dCreatedDT").value = t.Created_DateTime || "";
+    document.getElementById("dCreatedDT").value = DateTimeHelper.toDateTimeLocalValue(t.Created_DateTime);
     document.getElementById("dOfficeName").value = t.Office_Name || "";
     document.getElementById("dDesignation").value = t.Designation || "";
     document.getElementById("dSection").value = t.Section || "";
@@ -212,13 +212,13 @@ const DeliveryModule = {
     try { atts = JSON.parse(t.Attachments_JSON || "[]"); } catch (e) {}
     if (hasAtt) this.renderAttachmentRows(atts);
 
-    document.getElementById("dPlannedDT").value = t.Planned_Delivery_DT || "";
+    document.getElementById("dPlannedDT").value = DateTimeHelper.toDateTimeLocalValue(t.Planned_Delivery_DT);
     this.setToggle("dUrgencyGroup", t.Urgency || "Normal");
 
     this.setToggle("dStatusGroup", t.Delivery_Status || "");
     document.getElementById("dNotDeliveredBox").classList.toggle("hidden", t.Delivery_Status !== "Not Delivered");
     document.getElementById("dNotDelivReason").value = t.Not_Delivered_Reason || "";
-    document.getElementById("dCompletedDT").value = t.Completed_DateTime || "";
+    document.getElementById("dCompletedDT").value = DateTimeHelper.toDateTimeLocalValue(t.Completed_DateTime);
     document.getElementById("dStage2ReceiverName").value = t.Stage2_Receiver_Name || "";
     document.getElementById("dStage2Comments").value = t.Stage2_Comments || "";
 
@@ -227,7 +227,7 @@ const DeliveryModule = {
     document.getElementById("dReceiptYesFields").classList.toggle("hidden", t.Receipt_Given !== "Yes");
     document.getElementById("dReceiptNoReason").value = t.Receipt_No_Reason || "";
     document.getElementById("dReceiverName").value = t.Receiver_Name || "";
-    document.getElementById("dReportedDT").value = t.Reported_DateTime || "";
+    document.getElementById("dReportedDT").value = DateTimeHelper.toDateTimeLocalValue(t.Reported_DateTime);
 
     this.updateStageSummaries();
     this.refreshLearnedOptions();
@@ -486,7 +486,7 @@ const DeliveryModule = {
   },
 
   // =========================================================
-  // GROUP STAGE 3 REPORTING MODAL (FOR OUTWARD TASKS)
+  // GROUP STAGE 3 REPORTING MODAL
   // =========================================================
   openGroupReportModal() {
     if (!this.selectedUnrepIds.size) {
@@ -623,7 +623,6 @@ const DeliveryModule = {
       `<button type="button" class="smart-chip" data-dfill="dNature" data-dval="${v}">${v}</button>`
     ).join("");
 
-    // Learned File Number Prefix Patterns
     const prefixes = [];
     AppStore.deliveries.forEach(t => {
       try {
@@ -643,7 +642,6 @@ const DeliveryModule = {
       `<button type="button" class="smart-chip" data-dfill="dNotDelivReason" data-dval="${r}">${r}</button>`
     ).join("");
 
-    // Stage 2 Receiver chips (separated by Outward external receivers vs Inward our-office staff)
     const isInward = (this.currentTask && (this.currentTask.Direction || "Outward") === "Inward");
     const s2Pool = AppStore.deliveries
       .filter(t => (t.Direction || "Outward") === (isInward ? "Inward" : "Outward"))
@@ -666,7 +664,7 @@ const DeliveryModule = {
   },
 
   // =========================================================
-  // TASKS, UNREPORTED & HISTORY LISTS
+  // TASKS, UNREPORTED & NEWEST-FIRST HISTORY LISTS
   // =========================================================
   urgencyWeight(u) {
     if (u === "Very Urgent") return 3;
@@ -734,7 +732,6 @@ const DeliveryModule = {
   },
 
   renderUnreportedTasks() {
-    // Only Outward delivered tasks require Stage 3 receipt handover
     const unrep = AppStore.deliveries.filter(t =>
       (t.Direction || "Outward") === "Outward" &&
       t.Delivery_Status === "Delivered" &&
@@ -764,6 +761,10 @@ const DeliveryModule = {
           <div class="small muted mt-6">Delivered: ${DateTimeHelper.formatShort(t.Completed_DateTime)}</div>
         </div>`;
     }).join("");
+  },
+
+  historyTimestamp(t) {
+    return DateTimeHelper.timestampMs(t.Reported_DateTime || t.Completed_DateTime || t.Created_DateTime, t.Task_ID);
   },
 
   renderHistory() {
@@ -804,10 +805,11 @@ const DeliveryModule = {
       ].filter(Boolean).join(" ").toLowerCase().includes(q));
     }
 
-    if (sortBy === "OLDEST") list.sort((a, b) => String(a.Completed_DateTime).localeCompare(String(b.Completed_DateTime)));
+    // Default: Newest First
+    if (sortBy === "OLDEST") list.sort((a, b) => this.historyTimestamp(a) - this.historyTimestamp(b));
     else if (sortBy === "OFFICE") list.sort((a, b) => String(a.Office_Name).localeCompare(String(b.Office_Name)));
     else if (sortBy === "NATURE") list.sort((a, b) => String(a.Nature).localeCompare(String(b.Nature)));
-    else list.sort((a, b) => String(b.Completed_DateTime).localeCompare(String(a.Completed_DateTime)));
+    else list.sort((a, b) => this.historyTimestamp(b) - this.historyTimestamp(a));
 
     document.getElementById("dHistoryCountLabel").textContent = `${list.length} completed record(s)`;
     const wrap = document.getElementById("dHistoryList");
@@ -850,7 +852,7 @@ const DeliveryModule = {
   },
 
   // =========================================================
-  // READ-ONLY REPORT MODAL & EDIT WARNING
+  // READ-ONLY REPORT MODAL, EDIT WARNING & SINGLE DELETE WARNING
   // =========================================================
   openReportModal(taskId) {
     const t = AppStore.deliveries.find(x => String(x.Task_ID) === String(taskId));
@@ -884,8 +886,22 @@ const DeliveryModule = {
     `;
 
     document.getElementById("deliveryEditWarningBox").classList.add("hidden");
+    document.getElementById("deliveryDeleteWarningBox").classList.add("hidden");
     document.getElementById("deliveryReportFooter").classList.remove("hidden");
     document.getElementById("deliveryReportModal").classList.remove("hidden");
+  },
+
+  async deleteSingleDelivery(taskId) {
+    const idx = AppStore.deliveries.findIndex(t => String(t.Task_ID) === String(taskId));
+    if (idx === -1) return;
+    const removed = AppStore.deliveries[idx];
+    AppStore.deliveries.splice(idx, 1);
+
+    await AppStore.pushAction("deleteDelivery", { Task_ID: removed.Task_ID });
+    this.renderActiveTasks();
+    this.renderUnreportedTasks();
+    this.renderHistory();
+    showToast(`Deleted record (${removed.Office_Name})`);
   },
 
   setToggle(groupId, val) {
@@ -920,7 +936,6 @@ const DeliveryModule = {
     });
     document.getElementById("btnToggleExpandAllDelivery").addEventListener("click", () => this.toggleExpandAll());
 
-    // Direction Toggle: Outward vs Inward
     document.querySelectorAll("#dDirectionGroup button").forEach(btn => {
       btn.addEventListener("click", () => {
         const dir = btn.dataset.val;
@@ -1101,11 +1116,13 @@ const DeliveryModule = {
       this.renderHistory();
     });
 
-    // Read-Only Report Modal & Protected Edit Unlock
+    // Read-Only Report Modal, Protected Edit Unlock & Single-Record Delete Warning
     document.getElementById("btnCloseDeliveryReport").addEventListener("click", () => document.getElementById("deliveryReportModal").classList.add("hidden"));
     document.getElementById("btnCloseDeliveryReport2").addEventListener("click", () => document.getElementById("deliveryReportModal").classList.add("hidden"));
+
     document.getElementById("btnRequestEditHistory").addEventListener("click", () => {
       document.getElementById("deliveryEditWarningBox").classList.remove("hidden");
+      document.getElementById("deliveryDeleteWarningBox").classList.add("hidden");
       document.getElementById("deliveryReportFooter").classList.add("hidden");
     });
     document.getElementById("btnCancelHistoryEditWarn").addEventListener("click", () => {
@@ -1116,6 +1133,23 @@ const DeliveryModule = {
       document.getElementById("deliveryReportModal").classList.add("hidden");
       if (this.inspectingTaskId) this.loadTask(this.inspectingTaskId, 1);
       showToast("Unlocked for editing");
+    });
+
+    document.getElementById("btnRequestDeleteHistory").addEventListener("click", () => {
+      document.getElementById("deliveryDeleteWarningBox").classList.remove("hidden");
+      document.getElementById("deliveryEditWarningBox").classList.add("hidden");
+      document.getElementById("deliveryReportFooter").classList.add("hidden");
+    });
+    document.getElementById("btnCancelHistoryDeleteWarn").addEventListener("click", () => {
+      document.getElementById("deliveryDeleteWarningBox").classList.add("hidden");
+      document.getElementById("deliveryReportFooter").classList.remove("hidden");
+    });
+    document.getElementById("btnConfirmDeleteHistory").addEventListener("click", async () => {
+      document.getElementById("deliveryReportModal").classList.add("hidden");
+      if (this.inspectingTaskId) {
+        await this.deleteSingleDelivery(this.inspectingTaskId);
+        this.inspectingTaskId = null;
+      }
     });
   }
 };
