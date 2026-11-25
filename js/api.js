@@ -8,7 +8,7 @@ const AppStore = {
   isSyncing: false,
 
   init() {
-    const hardcoded = (CONFIG.DEFAULT_API_URL && !CONFIG.DEFAULT_API_URL.includes("https://script.google.com/macros/s/AKfycby0Fj-Gbhqqr3HjrjqAbNeybD9X5188dcZ_-of447a4qdOYm2E_pVRTbf5b9ZO6Bhg/exec"))
+    const hardcoded = (CONFIG.DEFAULT_API_URL && !CONFIG.DEFAULT_API_URL.includes("PASTE_YOUR"))
       ? CONFIG.DEFAULT_API_URL.trim()
       : "";
     const saved = localStorage.getItem(CONFIG.API_URL_KEY) || "";
@@ -241,6 +241,31 @@ const DateTimeHelper = {
     const d = new Date();
     d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
     return d.toISOString().slice(0, 16);
+  },
+
+  // Safely converts stored ISO/Sheet date strings to YYYY-MM-DDTHH:mm without losing original timestamp
+  toDateTimeLocalValue(raw) {
+    if (!raw) return "";
+    const str = String(raw).trim();
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(str)) {
+      return str.slice(0, 16);
+    }
+    const parsed = new Date(str);
+    if (!isNaN(parsed.getTime())) {
+      const local = new Date(parsed.getTime() - parsed.getTimezoneOffset() * 60000);
+      return local.toISOString().slice(0, 16);
+    }
+    return "";
+  },
+
+  // Numeric timestamp for reliable newest-first sorting
+  timestampMs(raw, fallbackId = "") {
+    if (raw) {
+      const parsed = new Date(String(raw).trim());
+      if (!isNaN(parsed.getTime())) return parsed.getTime();
+    }
+    const idDigits = String(fallbackId || "").match(/(\d{10,13})/);
+    return idDigits ? parseInt(idDigits[1], 10) : 0;
   },
 
   enforceNoFuture(inputEl, notifyUser = false) {
