@@ -1,4 +1,4 @@
-const CACHE = "tapal-suite-v9";
+const CACHE = "tapal-suite-v10";
 const FILES = ["./", "./index.html", "./style.css", "./js/config.js", "./js/api.js", "./js/postage.js", "./js/delivery.js", "./js/address.js"];
 
 self.addEventListener("install", e => {
