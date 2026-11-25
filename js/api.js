@@ -243,13 +243,16 @@ const DateTimeHelper = {
     return d.toISOString().slice(0, 16);
   },
 
-  // Safely converts stored ISO/Sheet date strings to YYYY-MM-DDTHH:mm without losing original timestamp
+  // Converts stored local or UTC ISO strings into local YYYY-MM-DDTHH:mm for datetime-local inputs
   toDateTimeLocalValue(raw) {
     if (!raw) return "";
     const str = String(raw).trim();
-    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(str)) {
+
+    // Only slice directly when no timezone suffix ('Z' or +HH:mm / -HH:mm) is present
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(str)) {
       return str.slice(0, 16);
     }
+
     const parsed = new Date(str);
     if (!isNaN(parsed.getTime())) {
       const local = new Date(parsed.getTime() - parsed.getTimezoneOffset() * 60000);
@@ -258,7 +261,6 @@ const DateTimeHelper = {
     return "";
   },
 
-  // Numeric timestamp for reliable newest-first sorting
   timestampMs(raw, fallbackId = "") {
     if (raw) {
       const parsed = new Date(String(raw).trim());
