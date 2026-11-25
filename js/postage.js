@@ -4,6 +4,7 @@ const PostageModule = {
   batchScanner: null,
   searchScanner: null,
   editingBarcodeCtx: null,
+  inspectingBatchId: null,
   historyFilter: "ALL",
 
   init() {
@@ -79,26 +80,30 @@ const PostageModule = {
   openStage(stageNum) {
     this.activeStage = stageNum;
 
+    // Only auto-fill current time if the field is genuinely blank (never overwrite saved history dates)
     if (stageNum === 1) {
       const inp = document.getElementById("pReceivedDT");
       if (!inp.value) {
-        inp.value = DateTimeHelper.nowLocalISO();
-        inp.max = inp.value;
+        const stored = DateTimeHelper.toDateTimeLocalValue(this.currentBatch.Received_DateTime);
+        inp.value = stored || DateTimeHelper.nowLocalISO();
       }
+      inp.max = DateTimeHelper.nowLocalISO();
     }
     if (stageNum === 2) {
       const inp = document.getElementById("pDeliveredDT");
       if (!inp.value) {
-        inp.value = DateTimeHelper.nowLocalISO();
-        inp.max = inp.value;
+        const stored = DateTimeHelper.toDateTimeLocalValue(this.currentBatch.Delivered_DateTime);
+        inp.value = stored || DateTimeHelper.nowLocalISO();
       }
+      inp.max = DateTimeHelper.nowLocalISO();
     }
     if (stageNum === 3) {
       const inp = document.getElementById("pGivenDT");
       if (!inp.value) {
-        inp.value = DateTimeHelper.nowLocalISO();
-        inp.max = inp.value;
+        const stored = DateTimeHelper.toDateTimeLocalValue(this.currentBatch.Given_DateTime);
+        inp.value = stored || DateTimeHelper.nowLocalISO();
       }
+      inp.max = DateTimeHelper.nowLocalISO();
     }
 
     [1, 2, 3].forEach(n => {
@@ -118,7 +123,7 @@ const PostageModule = {
 
   populateForm(b) {
     document.getElementById("postageBannerTitle").textContent = `SOM #${b.SOM_Number || "—"}`;
-    document.getElementById("pReceivedDT").value = b.Received_DateTime || "";
+    document.getElementById("pReceivedDT").value = DateTimeHelper.toDateTimeLocalValue(b.Received_DateTime);
     document.getElementById("pSomNumber").value = b.SOM_Number || "";
     document.getElementById("pSpeedPosts").value = b.Speed_Posts || 0;
     document.getElementById("pRegParcels").value = b.Registered_Parcels || 0;
@@ -135,14 +140,14 @@ const PostageModule = {
     document.getElementById("pRecNoBox").classList.toggle("hidden", b.Receipt_Received !== "No");
     document.getElementById("pRecNoReason").value = b.Receipt_No_Reason || "";
 
-    document.getElementById("pDeliveredDT").value = b.Delivered_DateTime || "";
+    document.getElementById("pDeliveredDT").value = DateTimeHelper.toDateTimeLocalValue(b.Delivered_DateTime);
     document.getElementById("pPoComments").value = b.PO_Comments || "";
 
     this.setToggle("pTapalGroup", b.Given_To_Tapal || "");
     document.getElementById("pTapalNoBox").classList.toggle("hidden", b.Given_To_Tapal !== "No");
     document.getElementById("pTapalNoReason").value = b.Tapal_No_Reason || "";
 
-    document.getElementById("pGivenDT").value = b.Given_DateTime || "";
+    document.getElementById("pGivenDT").value = DateTimeHelper.toDateTimeLocalValue(b.Given_DateTime);
     document.getElementById("pReceivedBy").value = b.Received_By_Name || "";
     document.getElementById("pComments").value = b.Comments || "";
 
@@ -174,7 +179,6 @@ const PostageModule = {
         const sheet = workbook.Sheets[firstSheetName];
         const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
 
-        // First look for LoMag "Item code" column header
         let itemColIdx = -1;
         if (rows.length > 0 && Array.isArray(rows[0])) {
           itemColIdx = rows[0].findIndex(h => String(h).trim().toLowerCase() === "item code");
@@ -186,7 +190,6 @@ const PostageModule = {
             if (cellVal) extractedCodes.push(cellVal);
           }
         } else {
-          // Fallback: scan all cells for standard India Post S10 barcodes
           rows.forEach(row => {
             if (!Array.isArray(row)) return;
             row.forEach(cell => {
@@ -196,7 +199,6 @@ const PostageModule = {
           });
         }
       } else {
-        // Fallback for .csv or .txt exports
         const text = await file.text();
         const matches = text.toUpperCase().match(/[A-Z]{2}\d{9}IN/g);
         if (matches) extractedCodes = matches;
@@ -228,14 +230,12 @@ const PostageModule = {
     }
   },
 
-  // Keeps the last entered barcode in the input box and selects the middle digits
   keepPreviousBarcodeInInput(code) {
     const inp = document.getElementById("manualBarcodeText");
     if (!inp || !code) return;
     const clean = String(code).trim().toUpperCase();
     inp.value = clean;
     inp.focus();
-    // If standard 13-char India Post format (e.g. EL590202824IN), select the 9 digits (index 2..11)
     if (clean.length === 13 && clean.endsWith("IN")) {
       inp.setSelectionRange(2, 11);
     } else if (clean.length > 2) {
@@ -273,7 +273,6 @@ const PostageModule = {
     if (!code) return null;
     if (overrideType === "SPEED") return { code, type: "SPEED" };
     if (overrideType === "REG") return { code, type: "REG" };
-    // EL/EM (E...) = Speed Post | CL (Registered Parcel) & RL (Registered Letter) (C... / R...) = Registered
     if (code.startsWith("C") || code.startsWith("R")) return { code, type: "REG" };
     return { code, type: "SPEED" };
   },
@@ -482,6 +481,54 @@ const PostageModule = {
   },
 
   // =========================================================
+  // READ-ONLY REPORT MODAL + PROTECTED EDIT & SINGLE DELETE
+  // =========================================================
+  openReportModal(batchId) {
+    const b = AppStore.batches.find(x => String(x.Batch_ID) === String(batchId));
+    if (!b) return;
+    this.inspectingBatchId = batchId;
+
+    const done = b.Given_To_Tapal === "Yes";
+
+    document.getElementById("postageReportBody").innerHTML = `
+      <div class="report-grid">
+        <div class="report-row"><span class="report-lbl">SOM Number</span><span class="report-val"><strong>#${b.SOM_Number}</strong> (${done ? "Completed" : "Pending"})</span></div>
+        <div class="report-row"><span class="report-lbl">Prepared Date & Time</span><span class="report-val">${DateTimeHelper.formatShort(b.Received_DateTime) || "—"}</span></div>
+        <div class="report-row"><span class="report-lbl">Articles (${b.Total_Articles || 0})</span><span class="report-val">Speed: ${b.Speed_Posts || 0} | Reg: ${b.Registered_Parcels || 0} | Ord: ${b.Ordinary_Posts || 0}</span></div>
+        <div class="report-row"><span class="report-lbl">Speed Barcodes</span><span class="report-val" style="word-break:break-all;">${b.Speed_Barcodes || "—"}</span></div>
+        <div class="report-row"><span class="report-lbl">Reg. Barcodes</span><span class="report-val" style="word-break:break-all;">${b.Registered_Barcodes || "—"}</span></div>
+        <div class="report-row"><span class="report-lbl">Post Office Counter</span><span class="report-val">${b.Counter_Number || "—"}</span></div>
+        <div class="report-row"><span class="report-lbl">SOM Received?</span><span class="report-val">${b.SOM_Received || "—"}${b.SOM_No_Reason ? " (" + b.SOM_No_Reason + ")" : ""}</span></div>
+        <div class="report-row"><span class="report-lbl">Receipt Received?</span><span class="report-val">${b.Receipt_Received || "—"}${b.Receipt_No_Reason ? " (" + b.Receipt_No_Reason + ")" : ""}</span></div>
+        <div class="report-row"><span class="report-lbl">Posted Date & Time</span><span class="report-val">${DateTimeHelper.formatShort(b.Delivered_DateTime) || "—"}</span></div>
+        <div class="report-row"><span class="report-lbl">Posting Remarks</span><span class="report-val">${b.PO_Comments || "—"}</span></div>
+        <div class="report-row"><span class="report-lbl">Given to Tapal?</span><span class="report-val">${b.Given_To_Tapal || "—"}${b.Tapal_No_Reason ? " (" + b.Tapal_No_Reason + ")" : ""}</span></div>
+        <div class="report-row"><span class="report-lbl">Tapal Date & Time</span><span class="report-val">${DateTimeHelper.formatShort(b.Given_DateTime) || "—"}</span></div>
+        <div class="report-row"><span class="report-lbl">Received By</span><span class="report-val">${b.Received_By_Name || "—"}</span></div>
+        <div class="report-row"><span class="report-lbl">Tapal Comments</span><span class="report-val">${b.Comments || "—"}</span></div>
+      </div>
+    `;
+
+    document.getElementById("postageEditWarningBox").classList.add("hidden");
+    document.getElementById("postageDeleteWarningBox").classList.add("hidden");
+    document.getElementById("postageReportFooter").classList.remove("hidden");
+    document.getElementById("postageReportModal").classList.remove("hidden");
+  },
+
+  async deleteSingleBatch(batchId) {
+    const idx = AppStore.batches.findIndex(b => String(b.Batch_ID) === String(batchId));
+    if (idx === -1) return;
+    const removed = AppStore.batches[idx];
+    AppStore.batches.splice(idx, 1);
+
+    await AppStore.pushAction("deleteBatch", { Batch_ID: removed.Batch_ID });
+    this.renderPendingBar();
+    this.renderHistory();
+    this.renderSearchResults();
+    showToast(`SOM #${removed.SOM_Number} deleted`);
+  },
+
+  // =========================================================
   // SAVE STAGES WITH DUPLICATE SOM GUARD
   // =========================================================
   collectStage1() {
@@ -601,7 +648,7 @@ const PostageModule = {
   },
 
   // =========================================================
-  // SUMMARIES, CHIPS, PENDING BAR, SEARCH & HISTORY
+  // SUMMARIES, CHIPS, PENDING BAR, SEARCH & NEWEST-FIRST HISTORY
   // =========================================================
   updateStageSummaries() {
     const b = this.currentBatch;
@@ -679,9 +726,17 @@ const PostageModule = {
     }).join("");
   },
 
+  sortNewestFirst(arr) {
+    return [...arr].sort((a, b) => {
+      const ta = DateTimeHelper.timestampMs(a.Received_DateTime, a.Batch_ID);
+      const tb = DateTimeHelper.timestampMs(b.Received_DateTime, b.Batch_ID);
+      return tb - ta;
+    });
+  },
+
   renderSearchResults(keywordPreset = null) {
     const q = document.getElementById("postageSearchInput").value.trim().toLowerCase();
-    let results = [...AppStore.batches];
+    let results = this.sortNewestFirst(AppStore.batches);
 
     if (keywordPreset === "PENDING_PO") {
       results = results.filter(b => !b.SOM_Received && !b.Receipt_Received);
@@ -718,7 +773,7 @@ const PostageModule = {
   },
 
   renderHistory() {
-    let list = [...AppStore.batches];
+    let list = this.sortNewestFirst(AppStore.batches);
     if (this.historyFilter === "PENDING") list = list.filter(b => b.Given_To_Tapal !== "Yes");
     if (this.historyFilter === "DONE") list = list.filter(b => b.Given_To_Tapal === "Yes");
 
@@ -728,7 +783,7 @@ const PostageModule = {
       return;
     }
 
-    wrap.innerHTML = list.slice(0, 10).map(b => this.buildBatchCardHTML(b)).join("");
+    wrap.innerHTML = list.slice(0, 20).map(b => this.buildBatchCardHTML(b)).join("");
   },
 
   buildBatchCardHTML(b) {
@@ -746,7 +801,7 @@ const PostageModule = {
           <strong>SOM #${b.SOM_Number} • ${b.Total_Articles || 0} pcs</strong>
           <div class="row-gap">
             <span class="badge ${done ? "online" : "offline"}">${done ? "Done" : "Pending"}</span>
-            <button type="button" class="btn-mini accent" data-load-batch="${b.Batch_ID}" data-next-stage="1">Open</button>
+            <button type="button" class="btn-mini accent" data-inspect-pbatch="${b.Batch_ID}">View</button>
           </div>
         </div>
         <div class="small muted mt-6">
@@ -817,7 +872,7 @@ const PostageModule = {
       document.getElementById(id).addEventListener("input", () => this.recalcTotal());
     });
 
-    // LoMag Excel File Import (.xls / .xlsx / .csv)
+    // LoMag Excel File Import
     const lomagInp = document.getElementById("lomagFileInput");
     document.getElementById("btnImportLoMag").addEventListener("click", () => {
       lomagInp.value = "";
@@ -849,7 +904,6 @@ const PostageModule = {
       }
     });
 
-    // Also support pasting multiple barcodes at once
     document.getElementById("manualBarcodeText").addEventListener("paste", (e) => {
       const pasted = (e.clipboardData || window.clipboardData).getData("text");
       const codes = pasted.toUpperCase().match(/[A-Z]{2}\d{9}IN/g);
@@ -902,6 +956,9 @@ const PostageModule = {
       if (e.target.dataset.loadBatch) {
         this.loadBatch(e.target.dataset.loadBatch, parseInt(e.target.dataset.nextStage || "1", 10));
       }
+      if (e.target.dataset.inspectPbatch) {
+        this.openReportModal(e.target.dataset.inspectPbatch);
+      }
       if (e.target.dataset.kw) {
         this.renderSearchResults(e.target.dataset.kw);
       }
@@ -910,6 +967,40 @@ const PostageModule = {
         e.target.classList.add("active-filter");
         this.historyFilter = e.target.dataset.pfilter;
         this.renderHistory();
+      }
+    });
+
+    // Read-Only Postage Report Modal Listeners (Edit & Single Delete with Warnings)
+    document.getElementById("btnClosePostageReport").addEventListener("click", () => document.getElementById("postageReportModal").classList.add("hidden"));
+    document.getElementById("btnClosePostageReport2").addEventListener("click", () => document.getElementById("postageReportModal").classList.add("hidden"));
+    document.getElementById("btnRequestEditPostage").addEventListener("click", () => {
+      document.getElementById("postageEditWarningBox").classList.remove("hidden");
+      document.getElementById("postageDeleteWarningBox").classList.add("hidden");
+      document.getElementById("postageReportFooter").classList.add("hidden");
+    });
+    document.getElementById("btnCancelPostageEditWarn").addEventListener("click", () => {
+      document.getElementById("postageEditWarningBox").classList.add("hidden");
+      document.getElementById("postageReportFooter").classList.remove("hidden");
+    });
+    document.getElementById("btnConfirmUnlockPostageEdit").addEventListener("click", () => {
+      document.getElementById("postageReportModal").classList.add("hidden");
+      if (this.inspectingBatchId) this.loadBatch(this.inspectingBatchId, 1);
+      showToast("Unlocked for editing");
+    });
+    document.getElementById("btnRequestDeletePostage").addEventListener("click", () => {
+      document.getElementById("postageDeleteWarningBox").classList.remove("hidden");
+      document.getElementById("postageEditWarningBox").classList.add("hidden");
+      document.getElementById("postageReportFooter").classList.add("hidden");
+    });
+    document.getElementById("btnCancelPostageDeleteWarn").addEventListener("click", () => {
+      document.getElementById("postageDeleteWarningBox").classList.add("hidden");
+      document.getElementById("postageReportFooter").classList.remove("hidden");
+    });
+    document.getElementById("btnConfirmDeletePostage").addEventListener("click", async () => {
+      document.getElementById("postageReportModal").classList.add("hidden");
+      if (this.inspectingBatchId) {
+        await this.deleteSingleBatch(this.inspectingBatchId);
+        this.inspectingBatchId = null;
       }
     });
 
