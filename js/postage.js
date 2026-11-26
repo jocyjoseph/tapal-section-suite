@@ -6,6 +6,7 @@ const PostageModule = {
   editingBarcodeCtx: null,
   inspectingBatchId: null,
   historyFilter: "ALL",
+  searchFilter: "ALL",
 
   init() {
     this.bindEvents();
@@ -35,6 +36,10 @@ const PostageModule = {
   // =========================================================
   // BATCH STATE & STAGE ACCORDIONS
   // =========================================================
+  isSentBatch(b) {
+    return Boolean(b.SOM_Received || b.Receipt_Received || b.Given_To_Tapal === "Yes");
+  },
+
   startNewEntry(notify = true) {
     this.stopBatchScanner();
     const nextSom = AppStore.getNextSomSuggestion();
@@ -80,7 +85,6 @@ const PostageModule = {
   openStage(stageNum) {
     this.activeStage = stageNum;
 
-    // Only auto-fill current time if the field is genuinely blank (never overwrite saved history dates)
     if (stageNum === 1) {
       const inp = document.getElementById("pReceivedDT");
       if (!inp.value) {
@@ -311,7 +315,7 @@ const PostageModule = {
 
     if (!silent) {
       if (navigator.vibrate) navigator.vibrate(60);
-      showToast(`Added ${parsed.type === "SPEED" ? "Speed" : "Registered"}: ${parsed.code}`);
+      showToast(`Added ${parsed.type === "SPEED" ? "Speed" : "R Parcel"}: ${parsed.code}`);
     }
     this.recalcTotal();
     this.renderScannedBarcodes();
@@ -322,8 +326,8 @@ const PostageModule = {
     const { speed, reg } = this.getBarcodeArrays();
     const wrap = document.getElementById("scannedBarcodeList");
     const chips = [
-      ...speed.map((c, idx) => `<button type="button" class="b-chip speed" data-edit-btype="SPEED" data-edit-bidx="${idx}" title="Tap to edit or delete">⚡ ${c}</button>`),
-      ...reg.map((c, idx) => `<button type="button" class="b-chip reg" data-edit-btype="REG" data-edit-bidx="${idx}" title="Tap to edit or delete">📦 ${c}</button>`)
+      ...speed.map((c, idx) => `<button type="button" class="b-chip speed" data-edit-btype="SPEED" data-edit-bidx="${idx}">⚡ ${c}</button>`),
+      ...reg.map((c, idx) => `<button type="button" class="b-chip reg" data-edit-btype="REG" data-edit-bidx="${idx}">📦 ${c}</button>`)
     ];
     wrap.innerHTML = chips.join("");
   },
@@ -488,24 +492,24 @@ const PostageModule = {
     if (!b) return;
     this.inspectingBatchId = batchId;
 
-    const done = b.Given_To_Tapal === "Yes";
+    const sent = this.isSentBatch(b);
 
     document.getElementById("postageReportBody").innerHTML = `
       <div class="report-grid">
-        <div class="report-row"><span class="report-lbl">SOM Number</span><span class="report-val"><strong>#${b.SOM_Number}</strong> (${done ? "Completed" : "Pending"})</span></div>
-        <div class="report-row"><span class="report-lbl">Prepared Date & Time</span><span class="report-val">${DateTimeHelper.formatShort(b.Received_DateTime) || "—"}</span></div>
-        <div class="report-row"><span class="report-lbl">Articles (${b.Total_Articles || 0})</span><span class="report-val">Speed: ${b.Speed_Posts || 0} | Reg: ${b.Registered_Parcels || 0} | Ord: ${b.Ordinary_Posts || 0}</span></div>
+        <div class="report-row"><span class="report-lbl">SOM Number</span><span class="report-val"><strong>#${b.SOM_Number}</strong> (${sent ? "Sent" : "Logged"})</span></div>
+        <div class="report-row"><span class="report-lbl">Preparation Time</span><span class="report-val">${DateTimeHelper.formatShort(b.Received_DateTime) || "—"}</span></div>
+        <div class="report-row"><span class="report-lbl">Postage (${b.Total_Articles || 0})</span><span class="report-val">Speed: ${b.Speed_Posts || 0} | R Parcel: ${b.Registered_Parcels || 0} | Ord: ${b.Ordinary_Posts || 0}</span></div>
         <div class="report-row"><span class="report-lbl">Speed Barcodes</span><span class="report-val" style="word-break:break-all;">${b.Speed_Barcodes || "—"}</span></div>
-        <div class="report-row"><span class="report-lbl">Reg. Barcodes</span><span class="report-val" style="word-break:break-all;">${b.Registered_Barcodes || "—"}</span></div>
-        <div class="report-row"><span class="report-lbl">Post Office Counter</span><span class="report-val">${b.Counter_Number || "—"}</span></div>
+        <div class="report-row"><span class="report-lbl">R Parcel Barcodes</span><span class="report-val" style="word-break:break-all;">${b.Registered_Barcodes || "—"}</span></div>
+        <div class="report-row"><span class="report-lbl">Counter</span><span class="report-val">${b.Counter_Number || "—"}</span></div>
         <div class="report-row"><span class="report-lbl">SOM Received?</span><span class="report-val">${b.SOM_Received || "—"}${b.SOM_No_Reason ? " (" + b.SOM_No_Reason + ")" : ""}</span></div>
         <div class="report-row"><span class="report-lbl">Receipt Received?</span><span class="report-val">${b.Receipt_Received || "—"}${b.Receipt_No_Reason ? " (" + b.Receipt_No_Reason + ")" : ""}</span></div>
-        <div class="report-row"><span class="report-lbl">Posted Date & Time</span><span class="report-val">${DateTimeHelper.formatShort(b.Delivered_DateTime) || "—"}</span></div>
-        <div class="report-row"><span class="report-lbl">Posting Remarks</span><span class="report-val">${b.PO_Comments || "—"}</span></div>
+        <div class="report-row"><span class="report-lbl">Posting Time</span><span class="report-val">${DateTimeHelper.formatShort(b.Delivered_DateTime) || "—"}</span></div>
+        <div class="report-row"><span class="report-lbl">Posting Comments</span><span class="report-val">${b.PO_Comments || "—"}</span></div>
         <div class="report-row"><span class="report-lbl">Given to Tapal?</span><span class="report-val">${b.Given_To_Tapal || "—"}${b.Tapal_No_Reason ? " (" + b.Tapal_No_Reason + ")" : ""}</span></div>
-        <div class="report-row"><span class="report-lbl">Tapal Date & Time</span><span class="report-val">${DateTimeHelper.formatShort(b.Given_DateTime) || "—"}</span></div>
+        <div class="report-row"><span class="report-lbl">Reporting Time</span><span class="report-val">${DateTimeHelper.formatShort(b.Given_DateTime) || "—"}</span></div>
         <div class="report-row"><span class="report-lbl">Received By</span><span class="report-val">${b.Received_By_Name || "—"}</span></div>
-        <div class="report-row"><span class="report-lbl">Tapal Comments</span><span class="report-val">${b.Comments || "—"}</span></div>
+        <div class="report-row"><span class="report-lbl">Comments</span><span class="report-val">${b.Comments || "—"}</span></div>
       </div>
     `;
 
@@ -621,7 +625,8 @@ const PostageModule = {
     this.updateStageSummaries();
     this.renderPendingBar();
     await AppStore.pushAction("saveBatch", this.currentBatch);
-    showToast(`SOM #${this.currentBatch.SOM_Number} Stage ${stageNum} Saved ✓`);
+    const stageNames = { 1: "Preparation", 2: "Posting", 3: "Reporting" };
+    showToast(`SOM #${this.currentBatch.SOM_Number} ${stageNames[stageNum]} Saved ✓`);
 
     if (stageNum === 1) this.openStage(2);
     else if (stageNum === 2) this.openStage(3);
@@ -637,7 +642,7 @@ const PostageModule = {
     this.updateStageSummaries();
     this.renderPendingBar();
     await AppStore.pushAction("saveBatch", this.currentBatch);
-    showToast(`SOM #${this.currentBatch.SOM_Number} All Stages Saved ✓`);
+    showToast(`SOM #${this.currentBatch.SOM_Number} Saved ✓`);
     this.collapseAllStages();
   },
 
@@ -656,26 +661,26 @@ const PostageModule = {
 
     const s1Done = Boolean(b.SOM_Number && b.Received_DateTime);
     document.getElementById("pSummary1").textContent = s1Done
-      ? `SOM #${b.SOM_Number} • ${b.Total_Articles} articles (${DateTimeHelper.formatShort(b.Received_DateTime)})`
-      : "Stage 1";
+      ? `SOM #${b.SOM_Number} • ${b.Total_Articles} Postage (${DateTimeHelper.formatShort(b.Received_DateTime)})`
+      : "Not saved yet";
     document.getElementById("pCard1").classList.toggle("completed", s1Done);
 
     const s2Done = Boolean(b.SOM_Received || b.Receipt_Received || b.Counter_Number);
     document.getElementById("pSummary2").textContent = s2Done
       ? `Counter ${b.Counter_Number || "-"} • SOM: ${b.SOM_Received || "-"} | Rec: ${b.Receipt_Received || "-"}`
-      : "Stage 2";
+      : "Pending";
     document.getElementById("pCard2").classList.toggle("completed", s2Done);
 
     const s3Done = b.Given_To_Tapal === "Yes";
     document.getElementById("pSummary3").textContent = b.Given_To_Tapal
       ? `Tapal: ${b.Given_To_Tapal}${b.Received_By_Name ? " (" + b.Received_By_Name + ")" : ""}`
-      : "Stage 3";
+      : "Pending";
     document.getElementById("pCard3").classList.toggle("completed", s3Done);
 
     const badge = document.getElementById("postageStageBadge");
-    if (s3Done) badge.textContent = "Completed";
-    else if (s2Done) badge.textContent = "Stage 2 Done";
-    else if (s1Done) badge.textContent = "Stage 1 Done";
+    if (s3Done) badge.textContent = "Reported";
+    else if (s2Done) badge.textContent = "Sent";
+    else if (s1Done) badge.textContent = "Logged";
     else badge.textContent = "Ready";
   },
 
@@ -722,7 +727,7 @@ const PostageModule = {
     bar.innerHTML = pending.map(b => {
       const nextStage = !(b.SOM_Received || b.Receipt_Received) ? 2 : 3;
       const active = this.currentBatch && String(this.currentBatch.Batch_ID) === String(b.Batch_ID);
-      return `<button type="button" class="batch-chip ${active ? "active" : ""}" data-load-batch="${b.Batch_ID}" data-next-stage="${nextStage}">SOM #${b.SOM_Number} (S${nextStage})</button>`;
+      return `<button type="button" class="batch-chip ${active ? "active" : ""}" data-load-batch="${b.Batch_ID}" data-next-stage="${nextStage}">SOM #${b.SOM_Number}</button>`;
     }).join("");
   },
 
@@ -734,22 +739,14 @@ const PostageModule = {
     });
   },
 
-  renderSearchResults(keywordPreset = null) {
+  renderSearchResults() {
     const q = document.getElementById("postageSearchInput").value.trim().toLowerCase();
     let results = this.sortNewestFirst(AppStore.batches);
 
-    if (keywordPreset === "PENDING_PO") {
-      results = results.filter(b => !b.SOM_Received && !b.Receipt_Received);
-    } else if (keywordPreset === "PENDING_TAPAL") {
-      results = results.filter(b => b.Given_To_Tapal !== "Yes");
-    } else if (keywordPreset === "COMPLETED") {
-      results = results.filter(b => b.Given_To_Tapal === "Yes");
-    } else if (keywordPreset === "NO_ISSUE") {
-      results = results.filter(b => b.SOM_Received === "No" || b.Receipt_Received === "No" || b.Given_To_Tapal === "No");
-    } else if (keywordPreset === "SPEED") {
-      results = results.filter(b => Number(b.Speed_Posts) > 0 || Boolean(b.Speed_Barcodes));
-    } else if (keywordPreset === "REG") {
-      results = results.filter(b => Number(b.Registered_Parcels) > 0 || Boolean(b.Registered_Barcodes));
+    if (this.searchFilter === "LOGGED") {
+      results = results.filter(b => !this.isSentBatch(b));
+    } else if (this.searchFilter === "SENT") {
+      results = results.filter(b => this.isSentBatch(b));
     }
 
     if (q) {
@@ -774,8 +771,8 @@ const PostageModule = {
 
   renderHistory() {
     let list = this.sortNewestFirst(AppStore.batches);
-    if (this.historyFilter === "PENDING") list = list.filter(b => b.Given_To_Tapal !== "Yes");
-    if (this.historyFilter === "DONE") list = list.filter(b => b.Given_To_Tapal === "Yes");
+    if (this.historyFilter === "LOGGED") list = list.filter(b => !this.isSentBatch(b));
+    if (this.historyFilter === "SENT") list = list.filter(b => this.isSentBatch(b));
 
     const wrap = document.getElementById("postageHistoryList");
     if (!list.length) {
@@ -783,11 +780,11 @@ const PostageModule = {
       return;
     }
 
-    wrap.innerHTML = list.slice(0, 20).map(b => this.buildBatchCardHTML(b)).join("");
+    wrap.innerHTML = list.slice(0, 25).map(b => this.buildBatchCardHTML(b)).join("");
   },
 
   buildBatchCardHTML(b) {
-    const done = b.Given_To_Tapal === "Yes";
+    const sent = this.isSentBatch(b);
     const codes = [b.Speed_Barcodes, b.Registered_Barcodes].filter(Boolean).join(", ");
     const issues = [
       b.SOM_Received === "No" ? `SOM No: ${b.SOM_No_Reason}` : "",
@@ -798,14 +795,14 @@ const PostageModule = {
     return `
       <div class="history-item">
         <div class="row-between">
-          <strong>SOM #${b.SOM_Number} • ${b.Total_Articles || 0} pcs</strong>
+          <strong>SOM #${b.SOM_Number} • ${b.Total_Articles || 0} Postage</strong>
           <div class="row-gap">
-            <span class="badge ${done ? "online" : "offline"}">${done ? "Done" : "Pending"}</span>
+            <span class="badge ${sent ? "online" : "offline"}">${sent ? "Sent" : "Logged"}</span>
             <button type="button" class="btn-mini accent" data-inspect-pbatch="${b.Batch_ID}">View</button>
           </div>
         </div>
         <div class="small muted mt-6">
-          Speed: ${b.Speed_Posts || 0} | Reg: ${b.Registered_Parcels || 0} | Ord: ${b.Ordinary_Posts || 0} • ${DateTimeHelper.formatShort(b.Received_DateTime)}
+          Speed: ${b.Speed_Posts || 0} | R Parcel: ${b.Registered_Parcels || 0} | Ord: ${b.Ordinary_Posts || 0} • ${DateTimeHelper.formatShort(b.Received_DateTime)}
         </div>
         ${codes ? `<div class="small mt-6" style="word-break:break-all;">Barcodes: <strong>${codes}</strong></div>` : ""}
         ${b.Received_By_Name ? `<div class="small muted mt-6">Tapal Receiver: <strong>${b.Received_By_Name}</strong></div>` : ""}
@@ -872,7 +869,6 @@ const PostageModule = {
       document.getElementById(id).addEventListener("input", () => this.recalcTotal());
     });
 
-    // LoMag Excel File Import
     const lomagInp = document.getElementById("lomagFileInput");
     document.getElementById("btnImportLoMag").addEventListener("click", () => {
       lomagInp.value = "";
@@ -884,7 +880,6 @@ const PostageModule = {
       }
     });
 
-    // Scanner & Repeat-Previous Manual Barcode Controls
     document.getElementById("btnToggleBatchScanner").addEventListener("click", () => this.toggleBatchScanner());
 
     const addManualAndRepeat = () => {
@@ -918,7 +913,6 @@ const PostageModule = {
       }
     });
 
-    // Stage 2 & 3 Conditional Toggles
     document.querySelectorAll("#pSomRecGroup button").forEach(btn => {
       btn.addEventListener("click", () => {
         this.setToggle("pSomRecGroup", btn.dataset.val);
@@ -938,13 +932,11 @@ const PostageModule = {
       });
     });
 
-    // Save Stage Buttons
     document.querySelectorAll("[data-save-pstage]").forEach(btn => {
       btn.addEventListener("click", () => this.saveStage(parseInt(btn.dataset.savePstage, 10)));
     });
     document.getElementById("btnSaveAllPostage").addEventListener("click", () => this.saveAllStages());
 
-    // Delegated Clicks inside Module 1
     document.getElementById("view-postage").addEventListener("click", (e) => {
       if (e.target.dataset.pfill) {
         document.getElementById(e.target.dataset.pfill).value = e.target.dataset.pval;
@@ -960,7 +952,10 @@ const PostageModule = {
         this.openReportModal(e.target.dataset.inspectPbatch);
       }
       if (e.target.dataset.kw) {
-        this.renderSearchResults(e.target.dataset.kw);
+        document.querySelectorAll("[data-kw]").forEach(b => b.classList.remove("active-filter"));
+        e.target.classList.add("active-filter");
+        this.searchFilter = e.target.dataset.kw;
+        this.renderSearchResults();
       }
       if (e.target.dataset.pfilter) {
         document.querySelectorAll("[data-pfilter]").forEach(b => b.classList.remove("active-filter"));
@@ -970,7 +965,7 @@ const PostageModule = {
       }
     });
 
-    // Read-Only Postage Report Modal Listeners (Edit & Single Delete with Warnings)
+    // Read-Only Postage Report Modal Listeners
     document.getElementById("btnClosePostageReport").addEventListener("click", () => document.getElementById("postageReportModal").classList.add("hidden"));
     document.getElementById("btnClosePostageReport2").addEventListener("click", () => document.getElementById("postageReportModal").classList.add("hidden"));
     document.getElementById("btnRequestEditPostage").addEventListener("click", () => {
@@ -1004,7 +999,6 @@ const PostageModule = {
       }
     });
 
-    // Barcode Edit Modal Listeners
     document.getElementById("btnReplaceBarcodeSave").addEventListener("click", () => this.saveBarcodeEdit());
     document.getElementById("btnDeleteBarcodeConfirm").addEventListener("click", () => this.deleteBarcodeEdit());
     document.getElementById("btnCancelBarcodeEdit").addEventListener("click", () => {
@@ -1012,7 +1006,6 @@ const PostageModule = {
       this.editingBarcodeCtx = null;
     });
 
-    // Search View Listeners
     document.getElementById("postageSearchInput").addEventListener("input", () => this.renderSearchResults());
     document.getElementById("btnScanSearch").addEventListener("click", () => this.toggleSearchScanner());
     document.getElementById("btnClearSearch").addEventListener("click", () => {
