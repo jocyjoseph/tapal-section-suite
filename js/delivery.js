@@ -7,6 +7,7 @@ const DeliveryModule = {
   groupReportIds: [],
   inspectingTaskId: null,
   allExpanded: false,
+  filtersOpen: false,
 
   init() {
     this.bindEvents();
@@ -62,10 +63,10 @@ const DeliveryModule = {
   // Builds Row 2: one strict single-line row per file/doc/enquiry ({Serial}, {File No.} - {Description})
   buildItemLinesHTML(t) {
     const dir = t.Direction || "Outward";
-    const desc = String(t.Description || "").trim();
+    const legacyDesc = String(t.Description || "").trim();
 
     if (this.isNilCollection(t)) {
-      const txt = desc ? `1. Nil - ${desc}` : `1. Nil (No documents)`;
+      const txt = legacyDesc ? `1. Nil - ${legacyDesc}` : `1. Nil (No documents)`;
       return `<div class="card-line small"><span class="card-line-text">${txt}</span></div>`;
     }
 
@@ -84,14 +85,15 @@ const DeliveryModule = {
     let items = [];
     try { items = JSON.parse(t.Items_JSON || "[]"); } catch (e) {}
     if (!items.length) {
-      items = [{ nature: t.Nature || "File", number: "" }];
+      items = [{ nature: t.Nature || "File", number: "", description: legacyDesc }];
     }
 
     return items.map((it, idx) => {
       const nat = String(it.nature || t.Nature || "File").trim();
       const num = String(it.number || "").trim();
+      const itemDesc = String(it.description !== undefined ? it.description : legacyDesc).trim();
       const filePart = num ? `${nat} #${num}` : nat;
-      const lineText = desc ? `${idx + 1}. ${filePart} - ${desc}` : `${idx + 1}. ${filePart}`;
+      const lineText = itemDesc ? `${idx + 1}. ${filePart} - ${itemDesc}` : `${idx + 1}. ${filePart}`;
       return `<div class="card-line small"><span class="card-line-text">${lineText}</span></div>`;
     }).join("");
   },
@@ -115,9 +117,11 @@ const DeliveryModule = {
       "Enquiry": "Enquiry",
       "Round-Trip": "Round-Trip"
     };
-    document.getElementById("dActiveTaskBanner").textContent = isExisting
-      ? `${dirTitles[dir]}: ${this.currentTask.Office_Name || "Task"}`
-      : `New ${dirTitles[dir]}`;
+
+    document.getElementById("dSchedulingInstruction").textContent = isExisting
+      ? `Editing ${dirTitles[dir]}: ${this.currentTask.Office_Name || "Task"}`
+      : "Choose the task type";
+    document.getElementById("btnNewDelivery").classList.toggle("hidden", !isExisting);
 
     document.getElementById("dCollectionModeGroup").classList.toggle("hidden", !isInward);
 
@@ -141,12 +145,11 @@ const DeliveryModule = {
       document.getElementById("lblDSection").textContent = "3. Section";
       document.getElementById("lblDNature").textContent = "4. Nature of File / Document";
       document.getElementById("lblDItemCount").textContent = "5. No. of File / Document";
-      document.getElementById("lblDItemNumbers").textContent = "6. File Number";
-      document.getElementById("lblDDescription").innerHTML = `7. Description <span class="muted small">(Optional)</span>`;
-      document.getElementById("lblDAttachments").textContent = "8. Attachments?";
+      document.getElementById("lblDItemNumbers").textContent = "6. File Number & Description";
+      document.getElementById("lblDAttachments").textContent = "7. Attachments?";
       document.getElementById("dPlannedDTGroup").classList.add("hidden");
       document.getElementById("dUrgencyFieldGroup").classList.remove("hidden");
-      document.getElementById("lblDUrgency").textContent = "9. Urgency Scale";
+      document.getElementById("lblDUrgency").textContent = "8. Urgency Scale";
       document.getElementById("btnSaveDStage1").textContent = "Save Preparation";
     } else if (isInward) {
       const colMode = this.getToggle("dCollectionResultToggle") || "Docs";
@@ -164,12 +167,11 @@ const DeliveryModule = {
       document.getElementById("lblDSection").textContent = "4. Section";
       document.getElementById("lblDNature").textContent = "5. Nature of File / Document";
       document.getElementById("lblDItemCount").textContent = "6. No. of File / Document";
-      document.getElementById("lblDItemNumbers").textContent = "7. File Number";
-      document.getElementById("lblDDescription").innerHTML = `8. Description <span class="muted small">(Optional)</span>`;
-      document.getElementById("lblDAttachments").textContent = "9. Attachments?";
+      document.getElementById("lblDItemNumbers").textContent = "7. File Number & Description";
+      document.getElementById("lblDAttachments").textContent = "8. Attachments?";
       document.getElementById("dPlannedDTGroup").classList.remove("hidden");
       document.getElementById("dUrgencyFieldGroup").classList.remove("hidden");
-      document.getElementById("lblDUrgency").textContent = "11. Urgency Scale";
+      document.getElementById("lblDUrgency").textContent = "10. Urgency Scale";
       document.getElementById("btnSaveDStage1").textContent = "Save Preparation";
     }
 
@@ -246,11 +248,10 @@ const DeliveryModule = {
       document.getElementById("dFileItemsSectionWrap").classList.remove("hidden");
       document.getElementById("lblDNature").textContent = "5. Nature of File / Document";
       document.getElementById("lblDItemCount").textContent = "6. No. of File / Document";
-      document.getElementById("lblDItemNumbers").textContent = "7. File Number";
-      document.getElementById("lblDDescription").innerHTML = `8. Description <span class="muted small">(Optional)</span>`;
-      document.getElementById("lblDAttachments").textContent = "9. Attachments?";
+      document.getElementById("lblDItemNumbers").textContent = "7. File Number & Description";
+      document.getElementById("lblDAttachments").textContent = "8. Attachments?";
       document.getElementById("dUrgencyFieldGroup").classList.remove("hidden");
-      document.getElementById("lblDUrgency").textContent = "10. Urgency Scale";
+      document.getElementById("lblDUrgency").textContent = "9. Urgency Scale";
       document.getElementById("dCard2").classList.remove("hidden");
       document.getElementById("btnSaveDStage1").textContent = "Save Collection";
     }
@@ -275,7 +276,7 @@ const DeliveryModule = {
       Nature: "File",
       Item_Count: 1,
       Nature_Mode: "Same",
-      Items_JSON: JSON.stringify([{ number: "" }]),
+      Items_JSON: JSON.stringify([{ number: "", description: "" }]),
       Items_Summary: "",
       Description: "",
       Has_Attachments: "No",
@@ -308,7 +309,7 @@ const DeliveryModule = {
 
     this.populateForm(this.currentTask);
     this.collapseAllStages();
-    if (notify) showToast("Ready for new entry");
+    if (notify) showToast("Form cleared");
   },
 
   loadTask(taskId, stageToOpen = 1) {
@@ -419,10 +420,13 @@ const DeliveryModule = {
     document.getElementById("dNilVisitRemarks").value = isNil ? (t.Description || "") : "";
     document.getElementById("dNature").value = isNil ? "File" : (t.Nature || "File");
     document.getElementById("dItemCount").value = Math.max(1, t.Item_Count || 1);
-    document.getElementById("dDescription").value = isNil ? "" : (t.Description || "");
 
     let items = [];
     try { items = JSON.parse(t.Items_JSON || "[]"); } catch (e) {}
+    // Backward-compatible hydration of legacy top-level Description into Item #1 if needed
+    if (items.length && !items[0].description && t.Description && !isNil) {
+      items[0].description = t.Description;
+    }
     this.renderDynamicItems(items);
 
     this.setToggle("dAttachToggleGroup", t.Has_Attachments || "No");
@@ -535,14 +539,14 @@ const DeliveryModule = {
           </div>
           <div class="form-group" style="margin-top:6px;">
             <label>Action</label>
-            <div class="chip-wrap mb-6">
+            <input type="text" class="rt-stop-action" value="${st.action || ""}" placeholder="Signing, countersigning, approving, rejecting..." />
+            <div class="chip-wrap">
               <button type="button" class="smart-chip" data-rtaction="Signing">Signing</button>
               <button type="button" class="smart-chip" data-rtaction="Countersigning">Countersigning</button>
               <button type="button" class="smart-chip" data-rtaction="Approving">Approving</button>
               <button type="button" class="smart-chip" data-rtaction="Verification">Verification</button>
               <button type="button" class="smart-chip" data-rtaction="Rejecting">Rejecting</button>
             </div>
-            <input type="text" class="rt-stop-action" value="${st.action || ""}" placeholder="Signing, countersigning, approving, rejecting..." />
           </div>
           <div class="form-group" style="margin-top:6px;">
             <label>Date & Time</label>
@@ -579,7 +583,7 @@ const DeliveryModule = {
   },
 
   // =========================================================
-  // DYNAMIC ITEM & ATTACHMENT SCHEMAS
+  // DYNAMIC ITEM & INDIVIDUAL DESCRIPTION SCHEMAS
   // =========================================================
   renderDynamicItems(existingItems = []) {
     const nature = document.getElementById("dNature").value.trim() || "File";
@@ -587,7 +591,7 @@ const DeliveryModule = {
     const isRt = (this.currentTask && this.currentTask.Direction === "Round-Trip");
 
     document.getElementById("lblDItemCount").textContent = `${isRt ? "5" : "6"}. No. of ${nature}`;
-    document.getElementById("lblDItemNumbers").textContent = `${isRt ? "6" : "7"}. ${count > 1 ? nature + " Numbers" : nature + " Number"}`;
+    document.getElementById("lblDItemNumbers").textContent = `${isRt ? "6" : "7"}. ${count > 1 ? nature + " Numbers & Descriptions" : nature + " Number & Description"}`;
 
     const modeWrap = document.getElementById("dSameVariousWrap");
     modeWrap.classList.toggle("hidden", count <= 1);
@@ -600,15 +604,19 @@ const DeliveryModule = {
       const prev = existingItems[i] || {};
       const numVal = prev.number || "";
       const natVal = prev.nature || "";
+      const descVal = prev.description || "";
       const itemLabel = this.natureMode === "Various" && natVal ? natVal : nature;
 
       rows.push(`
-        <div class="dynamic-item-row">
-          <span class="badge primary" style="min-width:26px; text-align:center;">${i + 1}</span>
-          ${count > 1 && this.natureMode === "Various"
-            ? `<input type="text" class="d-item-nature" list="dNatureList" value="${natVal}" placeholder="Nature (e.g. Cheque)" style="max-width:125px;" />`
-            : ""}
-          <input type="text" class="d-item-number" value="${numVal}" placeholder="${itemLabel} No. #${i + 1}" />
+        <div class="file-item-card">
+          <div class="file-item-top">
+            <span class="badge primary" style="min-width:26px; text-align:center;">${i + 1}</span>
+            ${count > 1 && this.natureMode === "Various"
+              ? `<input type="text" class="d-item-nature" list="dNatureList" value="${natVal}" placeholder="Nature (e.g. Cheque)" style="max-width:125px;" />`
+              : ""}
+            <input type="text" class="d-item-number" value="${numVal}" placeholder="${itemLabel} No. #${i + 1}" />
+          </div>
+          <input type="text" class="d-item-desc" value="${descVal}" placeholder="Description for #${i + 1} (Optional)..." />
         </div>
       `);
     }
@@ -617,14 +625,16 @@ const DeliveryModule = {
 
   collectDynamicItems() {
     const defaultNature = document.getElementById("dNature").value.trim() || "File";
-    const rows = document.querySelectorAll("#dDynamicItemsWrap .dynamic-item-row");
+    const cards = document.querySelectorAll("#dDynamicItemsWrap .file-item-card");
     const items = [];
-    rows.forEach(row => {
-      const natInp = row.querySelector(".d-item-nature");
-      const numInp = row.querySelector(".d-item-number");
+    cards.forEach(card => {
+      const natInp = card.querySelector(".d-item-nature");
+      const numInp = card.querySelector(".d-item-number");
+      const descInp = card.querySelector(".d-item-desc");
       items.push({
         nature: (natInp && natInp.value.trim()) ? natInp.value.trim() : defaultNature,
-        number: numInp ? numInp.value.trim() : ""
+        number: numInp ? numInp.value.trim() : "",
+        description: descInp ? descInp.value.trim() : ""
       });
     });
     return items;
@@ -634,7 +644,8 @@ const DeliveryModule = {
     if (!items || !items.length) return fallbackNature;
     return items.map((it, idx) => {
       const nat = it.nature || fallbackNature;
-      return it.number ? `${nat} #${it.number}` : `${nat} (${idx + 1})`;
+      const base = it.number ? `${nat} #${it.number}` : `${nat} (${idx + 1})`;
+      return it.description ? `${base} - ${it.description}` : base;
     }).join(", ");
   },
 
@@ -721,7 +732,7 @@ const DeliveryModule = {
       this.currentTask.Nature_Mode = this.natureMode;
       this.currentTask.Items_JSON = JSON.stringify(items);
       this.currentTask.Items_Summary = this.formatItemsSummary(items, nature);
-      this.currentTask.Description = document.getElementById("dDescription").value.trim();
+      this.currentTask.Description = items.map(it => it.description).filter(Boolean).join(" | ");
       this.currentTask.Has_Attachments = hasAtt;
       this.currentTask.Attachment_Count = hasAtt === "Yes" ? atts.length : 0;
       this.currentTask.Attachments_JSON = JSON.stringify(atts);
@@ -782,7 +793,7 @@ const DeliveryModule = {
       this.currentTask.Nature_Mode = this.natureMode;
       this.currentTask.Items_JSON = JSON.stringify(items);
       this.currentTask.Items_Summary = this.formatItemsSummary(items, nature);
-      this.currentTask.Description = document.getElementById("dDescription").value.trim();
+      this.currentTask.Description = items.map(it => it.description).filter(Boolean).join(" | ");
       this.currentTask.Has_Attachments = hasAtt;
       this.currentTask.Attachment_Count = hasAtt === "Yes" ? atts.length : 0;
       this.currentTask.Attachments_JSON = JSON.stringify(atts);
@@ -1309,9 +1320,7 @@ const DeliveryModule = {
     return 1;
   },
 
-  // SCHEDULED TAB:
-  // Row 1: Task Type, Office Name, Section
-  // Row 2+: {Serial}, {File No.} - {Description} (1 line per file/doc, trimmed)
+  // SCHEDULED TAB (with high-contrast urgency borders & background tints)
   renderActiveTasks() {
     const allPending = AppStore.deliveries.filter(t => {
       if (this.isCompletedLifecycle(t)) return false;
@@ -1345,6 +1354,11 @@ const DeliveryModule = {
     wrap.innerHTML = active.map(t => {
       const dir = t.Direction || "Outward";
       const cardClass = t.Urgency === "Very Urgent" ? "very-urgent" : t.Urgency === "Urgent" ? "urgent" : "";
+      const urgPill = t.Urgency === "Very Urgent"
+        ? `<span class="urg-pill-very">Very Urgent</span>`
+        : t.Urgency === "Urgent"
+          ? `<span class="urg-pill-urgent">Urgent</span>`
+          : "";
 
       let nextBtnText = "Delivery →";
       let nextStage = 2;
@@ -1372,6 +1386,7 @@ const DeliveryModule = {
               ${this.getDirectionBadgeHTML(t)}
               <strong style="margin-left:4px;">${t.Office_Name}</strong>${t.Section ? ` <span class="muted small">• ${t.Section}</span>` : ""}
             </div>
+            ${urgPill ? `<div class="card-line-actions">${urgPill}</div>` : ""}
           </div>
           ${this.buildItemLinesHTML(t)}
           <div class="row-between mt-8">
@@ -1382,10 +1397,7 @@ const DeliveryModule = {
     }).join("");
   },
 
-  // COMPLETED TAB:
-  // Row 1: Task Type, Office Name, Section
-  // Row 2+: {Serial}, {File No.} - {Description} (1 line per file/doc, trimmed)
-  // Row 3: Delivery time - Receiver's name
+  // COMPLETED TAB
   renderUnreportedTasks() {
     const unrep = AppStore.deliveries.filter(t => {
       const dir = t.Direction || "Outward";
@@ -1435,11 +1447,7 @@ const DeliveryModule = {
     return DateTimeHelper.timestampMs(t.Reported_DateTime || t.Completed_DateTime || t.Reply_DateTime || t.Created_DateTime, t.Task_ID);
   },
 
-  // REPORTED TAB:
-  // Row 1: Task Type, Office Name, Section (+ View button)
-  // Row 2+: {Serial}, {File No.} - {Description} (1 line per file/doc, trimmed)
-  // Row 3: Delivery time - Receiver's name
-  // Row 4: Date & time of receipt - Received by
+  // REPORTED TAB
   renderHistory() {
     const completed = AppStore.deliveries.filter(t => this.isCompletedLifecycle(t));
 
@@ -1461,6 +1469,24 @@ const DeliveryModule = {
     const fReceiver = document.getElementById("dHistoryFilterReceiver").value;
     const dFrom = document.getElementById("dHistoryDateFrom").value;
     const dTo = document.getElementById("dHistoryDateTo").value;
+
+    // Update Filters toggle button badge count
+    let activeFilterCount = 0;
+    if (fDir !== "ALL") activeFilterCount++;
+    if (fStatus !== "ALL") activeFilterCount++;
+    if (fOffice !== "ALL") activeFilterCount++;
+    if (fNature !== "ALL") activeFilterCount++;
+    if (fDesig !== "ALL") activeFilterCount++;
+    if (fReceiver !== "ALL") activeFilterCount++;
+    if (dFrom) activeFilterCount++;
+    if (dTo) activeFilterCount++;
+
+    const toggleBtn = document.getElementById("btnToggleHistoryFilters");
+    if (toggleBtn) {
+      const arrow = this.filtersOpen ? "▴" : "▾";
+      toggleBtn.textContent = activeFilterCount > 0 ? `Filters (${activeFilterCount}) ${arrow}` : `Filters ${arrow}`;
+      toggleBtn.classList.toggle("active-filter", activeFilterCount > 0);
+    }
 
     let list = [...completed];
     if (fDir === "Inward_Docs") {
@@ -1487,7 +1513,7 @@ const DeliveryModule = {
         t.Office_Name, t.Designation, t.Section, t.Nature, t.Items_Summary,
         t.Description, t.Stage2_Comments, t.Stage2_Receiver_Name, t.Receiver_Name,
         t.Enquirer_Name, t.Respondent_Name, t.Enquiry_Text, t.Reply_Text,
-        t.File_Given_By, t.RoundTrip_Stops_JSON
+        t.File_Given_By, t.RoundTrip_Stops_JSON, t.Items_JSON
       ].filter(Boolean).join(" ").toLowerCase().includes(q));
     }
 
@@ -1523,7 +1549,6 @@ const DeliveryModule = {
           ? `${DateTimeHelper.formatShort(t.Reported_DateTime) || "—"} - ${t.Receiver_Name || "—"}`
           : `No Receipt${t.Receipt_No_Reason ? " - " + t.Receipt_No_Reason : ""}`;
       } else {
-        // Outward Delivery
         row3Text = `${DateTimeHelper.formatShort(t.Completed_DateTime) || "—"} - ${t.Stage2_Receiver_Name || "—"}`;
         row4Text = t.Receipt_Given === "Yes"
           ? `${DateTimeHelper.formatShort(t.Reported_DateTime) || "—"} - ${t.Receiver_Name || "—"}`
@@ -1562,7 +1587,7 @@ const DeliveryModule = {
   },
 
   // =========================================================
-  // READ-ONLY REPORT MODAL, EDIT WARNING & SINGLE DELETE WARNING
+  // STRUCTURED 3-SECTION TASK DETAILED REPORT MODAL
   // =========================================================
   openReportModal(taskId) {
     const t = AppStore.deliveries.find(x => String(x.Task_ID) === String(taskId));
@@ -1574,76 +1599,117 @@ const DeliveryModule = {
     let atts = [];
     try { atts = JSON.parse(t.Attachments_JSON || "[]"); } catch (e) {}
 
-    let rowsHTML = "";
+    let items = [];
+    try { items = JSON.parse(t.Items_JSON || "[]"); } catch (e) {}
+    if (!items.length && !isNil && dir !== "Enquiry") {
+      items = [{ nature: t.Nature || "File", number: "", description: t.Description || "" }];
+    }
+
+    const itemsSectionHTML = items.map((it, idx) => {
+      const nat = it.nature || t.Nature || "File";
+      const num = it.number ? ` #${it.number}` : "";
+      const desc = it.description || (idx === 0 ? t.Description : "") || "";
+      return `<div class="report-item-line"><strong>${idx + 1}. ${nat}${num}</strong>${desc ? ` — ${desc}` : ""}</div>`;
+    }).join("");
+
+    let bodyHTML = `
+      <div class="report-hero">
+        <div class="row-between">
+          ${this.getDirectionBadgeHTML(t)}
+          <span class="small muted">${t.Urgency || "Normal"}</span>
+        </div>
+        <div class="report-hero-title">${t.Office_Name}</div>
+        ${(t.Designation || t.Section) ? `<div class="small muted mt-6">${[t.Designation, t.Section ? "Sec: " + t.Section : ""].filter(Boolean).join(" • ")}</div>` : ""}
+      </div>
+    `;
+
     if (isNil) {
-      rowsHTML = `
-        <div class="report-row"><span class="report-lbl">Task Type</span><span class="report-val">📥 Collection — Nil Visit</span></div>
-        <div class="report-row"><span class="report-lbl">Date & Time of Visit</span><span class="report-val">${DateTimeHelper.formatShort(t.Created_DateTime)}</span></div>
-        <div class="report-row"><span class="report-lbl">Office Visited</span><span class="report-val">${t.Office_Name}</span></div>
-        <div class="report-row"><span class="report-lbl">Section / Counter</span><span class="report-val">${t.Section || "—"}</span></div>
-        <div class="report-row"><span class="report-lbl">Documents Collected</span><span class="report-val">Nil (None pending)</span></div>
-        <div class="report-row"><span class="report-lbl">Visit Remarks</span><span class="report-val">${t.Description || t.Stage2_Comments || "—"}</span></div>
+      bodyHTML += `
+        <div class="report-section">
+          <div class="report-section-title">Duty Visit Log</div>
+          <div class="report-kv"><span class="report-kv-lbl">Date & Time</span><span class="report-kv-val">${DateTimeHelper.formatShort(t.Created_DateTime)}</span></div>
+          <div class="report-kv"><span class="report-kv-lbl">Collection Result</span><span class="report-kv-val">Nil (No pending documents)</span></div>
+        </div>
+        ${t.Description ? `<div class="report-note-box"><strong>Remarks:</strong> ${t.Description}</div>` : ""}
       `;
     } else if (dir === "Enquiry") {
-      rowsHTML = `
-        <div class="report-row"><span class="report-lbl">Task Type</span><span class="report-val">🔍 Enquiry</span></div>
-        <div class="report-row"><span class="report-lbl">Date & Time</span><span class="report-val">${DateTimeHelper.formatShort(t.Created_DateTime)}</span></div>
-        <div class="report-row"><span class="report-lbl">Enquirer</span><span class="report-val">${t.Enquirer_Name || "—"}</span></div>
-        <div class="report-row"><span class="report-lbl">To Office</span><span class="report-val">${t.Office_Name}</span></div>
-        <div class="report-row"><span class="report-lbl">Enquiry / ies</span><span class="report-val">${t.Enquiry_Text || "—"}</span></div>
-        <div class="report-row"><span class="report-lbl">Reply</span><span class="report-val">${t.Reply_Text || "—"}</span></div>
-        <div class="report-row"><span class="report-lbl">Respondent</span><span class="report-val">${t.Respondent_Name || "—"}</span></div>
-        <div class="report-row"><span class="report-lbl">Date & Time of Reply</span><span class="report-val">${DateTimeHelper.formatShort(t.Reply_DateTime) || "—"}</span></div>
-        <div class="report-row"><span class="report-lbl">Report Status</span><span class="report-val">${t.Report_Status || "—"}</span></div>
-        <div class="report-row"><span class="report-lbl">Date & Time of Reporting</span><span class="report-val">${DateTimeHelper.formatShort(t.Reported_DateTime) || "—"}</span></div>
-        <div class="report-row"><span class="report-lbl">Method of Reporting</span><span class="report-val">${t.Report_Method || "—"}</span></div>
-        <div class="report-row"><span class="report-lbl">Comments</span><span class="report-val">${t.Stage2_Comments || "—"}</span></div>
+      let enqs = [];
+      try { enqs = JSON.parse(t.Enquiries_JSON || "[]"); } catch (e) {}
+      const enqLines = enqs.filter(e => e.question).length
+        ? enqs.filter(e => e.question).map((e, i) => `<div class="report-item-line"><strong>${i + 1}.</strong> ${e.question}</div>`).join("")
+        : `<div class="report-item-line">${t.Enquiry_Text || "—"}</div>`;
+
+      bodyHTML += `
+        <div class="report-section">
+          <div class="report-section-title">1. Enquiry Details</div>
+          <div class="report-kv"><span class="report-kv-lbl">Enquirer</span><span class="report-kv-val">${t.Enquirer_Name || "—"}</span></div>
+          <div class="report-kv"><span class="report-kv-lbl">Date & Time</span><span class="report-kv-val">${DateTimeHelper.formatShort(t.Created_DateTime)}</span></div>
+          <div class="mt-6">${enqLines}</div>
+        </div>
+        <div class="report-section">
+          <div class="report-section-title">2. Reply & Reporting</div>
+          <div class="report-item-line" style="margin-bottom:6px;"><strong>Reply:</strong> ${t.Reply_Text || "—"}</div>
+          <div class="report-kv"><span class="report-kv-lbl">Respondent</span><span class="report-kv-val">${t.Respondent_Name || "—"}</span></div>
+          <div class="report-kv"><span class="report-kv-lbl">Reply Time</span><span class="report-kv-val">${DateTimeHelper.formatShort(t.Reply_DateTime) || "—"}</span></div>
+          <div class="report-kv"><span class="report-kv-lbl">Reported Status</span><span class="report-kv-val">${t.Report_Status || "—"} (${t.Report_Method || "—"})</span></div>
+          <div class="report-kv"><span class="report-kv-lbl">Reported Time</span><span class="report-kv-val">${DateTimeHelper.formatShort(t.Reported_DateTime) || "—"}</span></div>
+        </div>
+        ${t.Stage2_Comments ? `<div class="report-note-box"><strong>Comments:</strong> ${t.Stage2_Comments}</div>` : ""}
       `;
     } else if (dir === "Round-Trip") {
       let stops = [];
       try { stops = JSON.parse(t.RoundTrip_Stops_JSON || "[]"); } catch (e) {}
-      const stopsText = stops.filter(s => s.office).map((s, i) =>
-        `<strong>Office #${i + 1}:</strong> ${s.office}${s.designation ? " (" + s.designation + ")" : ""}${s.section ? " • Sec: " + s.section : ""}${s.action ? " — <em>" + s.action + "</em>" : ""} [${DateTimeHelper.formatShort(s.dt)}]`
-      ).join("<br/>");
+      const stopsLines = stops.filter(s => s.office).map((s, i) => `
+        <div class="report-item-line">
+          <strong>Office #${i + 1}: ${s.office}</strong>
+          <div class="small muted">${[s.designation, s.section, s.action].filter(Boolean).join(" • ")} (${DateTimeHelper.formatShort(s.dt)})</div>
+        </div>
+      `).join("");
 
-      rowsHTML = `
-        <div class="report-row"><span class="report-lbl">Task Type</span><span class="report-val">🔄 Round-Trip</span></div>
-        <div class="report-row"><span class="report-lbl">Prepared Date & Time</span><span class="report-val">${DateTimeHelper.formatShort(t.Created_DateTime)}</span></div>
-        <div class="report-row"><span class="report-lbl">File Given By</span><span class="report-val">${t.File_Given_By || "—"}</span></div>
-        <div class="report-row"><span class="report-lbl">Section</span><span class="report-val">${t.Section || "—"}</span></div>
-        <div class="report-row"><span class="report-lbl">Items (${t.Item_Count})</span><span class="report-val">${t.Items_Summary || t.Nature}</span></div>
-        <div class="report-row"><span class="report-lbl">Description</span><span class="report-val">${t.Description || "—"}</span></div>
-        <div class="report-row"><span class="report-lbl">Attachments</span><span class="report-val">${t.Has_Attachments === "Yes" ? atts.map(a => `${a.nature} ${a.number}`).join(", ") : "None"}</span></div>
-        <div class="report-row"><span class="report-lbl">Movement</span><span class="report-val">${stopsText || "—"}</span></div>
-        <div class="report-row"><span class="report-lbl">File/Doc Received By</span><span class="report-val">${t.Stage2_Receiver_Name || "—"}</span></div>
-        <div class="report-row"><span class="report-lbl">Return Date & Time</span><span class="report-val">${DateTimeHelper.formatShort(t.Reported_DateTime) || "—"}</span></div>
-        <div class="report-row"><span class="report-lbl">Receipt Received</span><span class="report-val">${t.Receipt_Given || "—"}${t.Receipt_Given === "Yes" && t.Receiver_Name ? " (" + t.Receiver_Name + ")" : ""}${t.Receipt_No_Reason ? " (" + t.Receipt_No_Reason + ")" : ""}</span></div>
-        <div class="report-row"><span class="report-lbl">Comments</span><span class="report-val">${t.Stage2_Comments || "—"}</span></div>
+      bodyHTML += `
+        <div class="report-section">
+          <div class="report-section-title">1. File Preparation (${t.Item_Count})</div>
+          <div class="report-kv"><span class="report-kv-lbl">File Given By</span><span class="report-kv-val">${t.File_Given_By || "—"}</span></div>
+          <div class="report-kv"><span class="report-kv-lbl">Prepared Time</span><span class="report-kv-val">${DateTimeHelper.formatShort(t.Created_DateTime)}</span></div>
+          <div class="mt-6">${itemsSectionHTML}</div>
+          ${t.Has_Attachments === "Yes" ? `<div class="small muted mt-6"><strong>Attachments:</strong> ${atts.map(a => `${a.nature} ${a.number}`).join(", ")}</div>` : ""}
+        </div>
+        <div class="report-section">
+          <div class="report-section-title">2. Office Movement Trail</div>
+          ${stopsLines || "<div class='small muted'>No stops recorded</div>"}
+        </div>
+        <div class="report-section">
+          <div class="report-section-title">3. Return to Office</div>
+          <div class="report-kv"><span class="report-kv-lbl">File/Doc Received By</span><span class="report-kv-val">${t.Stage2_Receiver_Name || "—"}</span></div>
+          <div class="report-kv"><span class="report-kv-lbl">Return Time</span><span class="report-kv-val">${DateTimeHelper.formatShort(t.Reported_DateTime) || "—"}</span></div>
+          <div class="report-kv"><span class="report-kv-lbl">Receipt Received</span><span class="report-kv-val">${t.Receipt_Given || "—"}${t.Receipt_Given === "Yes" && t.Receiver_Name ? " (" + t.Receiver_Name + ")" : ""}${t.Receipt_No_Reason ? " (" + t.Receipt_No_Reason + ")" : ""}</span></div>
+        </div>
+        ${t.Stage2_Comments ? `<div class="report-note-box"><strong>Comments:</strong> ${t.Stage2_Comments}</div>` : ""}
       `;
     } else {
       const isInward = dir === "Inward";
-      rowsHTML = `
-        <div class="report-row"><span class="report-lbl">Task Type</span><span class="report-val">${isInward ? "📥 Collection" : "📤 Delivery"}</span></div>
-        <div class="report-row"><span class="report-lbl">${isInward ? "From Office" : "To Office"}</span><span class="report-val">${t.Office_Name}</span></div>
-        <div class="report-row"><span class="report-lbl">Designation</span><span class="report-val">${t.Designation || "—"}</span></div>
-        <div class="report-row"><span class="report-lbl">${isInward ? "Receiving Section" : "Section"}</span><span class="report-val">${t.Section || "—"}</span></div>
-        <div class="report-row"><span class="report-lbl">Items (${t.Item_Count})</span><span class="report-val">${t.Items_Summary || t.Nature}</span></div>
-        <div class="report-row"><span class="report-lbl">Description</span><span class="report-val">${t.Description || "—"}</span></div>
-        <div class="report-row"><span class="report-lbl">Attachments</span><span class="report-val">${t.Has_Attachments === "Yes" ? atts.map(a => `${a.nature} ${a.number}`).join(", ") : "None"}</span></div>
-        <div class="report-row"><span class="report-lbl">Urgency</span><span class="report-val">${t.Urgency}</span></div>
-        <div class="report-row"><span class="report-lbl">${isInward ? "Collected Time" : "Created Time"}</span><span class="report-val">${DateTimeHelper.formatShort(t.Created_DateTime)}</span></div>
-        <div class="report-row"><span class="report-lbl">${isInward ? "Handed Over Time" : "Delivered Time"}</span><span class="report-val">${DateTimeHelper.formatShort(t.Completed_DateTime)}</span></div>
-        <div class="report-row"><span class="report-lbl">Receiver's Name</span><span class="report-val">${t.Stage2_Receiver_Name || "—"}</span></div>
-        <div class="report-row"><span class="report-lbl">Comments</span><span class="report-val">${t.Stage2_Comments || "—"}</span></div>
-        ${!isInward ? `
-          <div class="report-row"><span class="report-lbl">Receipt Given</span><span class="report-val">${t.Receipt_Given} ${t.Receipt_No_Reason ? "(" + t.Receipt_No_Reason + ")" : ""}</span></div>
-          <div class="report-row"><span class="report-lbl">Receipt Receiver</span><span class="report-val">${t.Receiver_Name || "—"}</span></div>
-          <div class="report-row"><span class="report-lbl">Reported Time</span><span class="report-val">${DateTimeHelper.formatShort(t.Reported_DateTime)}</span></div>
-        ` : ""}
+      bodyHTML += `
+        <div class="report-section">
+          <div class="report-section-title">1. Document Details (${t.Item_Count})</div>
+          ${itemsSectionHTML}
+          ${t.Has_Attachments === "Yes" ? `<div class="small muted mt-6"><strong>Attachments:</strong> ${atts.map(a => `${a.nature} ${a.number}`).join(", ")}</div>` : ""}
+        </div>
+        <div class="report-section">
+          <div class="report-section-title">2. Timeline & Custody</div>
+          <div class="report-kv"><span class="report-kv-lbl">${isInward ? "Collected Time" : "Prepared Time"}</span><span class="report-kv-val">${DateTimeHelper.formatShort(t.Created_DateTime)}</span></div>
+          <div class="report-kv"><span class="report-kv-lbl">${isInward ? "Handover Time" : "Delivered Time"}</span><span class="report-kv-val">${DateTimeHelper.formatShort(t.Completed_DateTime)}</span></div>
+          <div class="report-kv"><span class="report-kv-lbl">Receiver's Name</span><span class="report-kv-val">${t.Stage2_Receiver_Name || "—"}</span></div>
+          ${!isInward ? `
+            <div class="report-kv"><span class="report-kv-lbl">Receipt Status</span><span class="report-kv-val">${t.Receipt_Given}${t.Receipt_No_Reason ? " (" + t.Receipt_No_Reason + ")" : ""}</span></div>
+            <div class="report-kv"><span class="report-kv-lbl">Receipt Receiver</span><span class="report-kv-val">${t.Receiver_Name || "—"}</span></div>
+            <div class="report-kv"><span class="report-kv-lbl">Reported Time</span><span class="report-kv-val">${DateTimeHelper.formatShort(t.Reported_DateTime)}</span></div>
+          ` : ""}
+        </div>
+        ${t.Stage2_Comments ? `<div class="report-note-box"><strong>Comments:</strong> ${t.Stage2_Comments}</div>` : ""}
       `;
     }
 
-    document.getElementById("deliveryReportBody").innerHTML = `<div class="report-grid">${rowsHTML}</div>`;
+    document.getElementById("deliveryReportBody").innerHTML = bodyHTML;
 
     document.getElementById("deliveryEditWarningBox").classList.add("hidden");
     document.getElementById("deliveryDeleteWarningBox").classList.add("hidden");
@@ -1867,19 +1933,29 @@ const DeliveryModule = {
       });
     });
 
-    document.getElementById("view-delivery").addEventListener("click", (e) => {
+    // Use mousedown/pointerdown for focus-reveal chips so tapping a chip fills before blur hides it
+    document.getElementById("view-delivery").addEventListener("pointerdown", (e) => {
       if (e.target.dataset.dfill) {
+        e.preventDefault();
         const el = document.getElementById(e.target.dataset.dfill);
         el.value = e.target.dataset.dval;
         if (e.target.dataset.dfill === "dNature") this.renderDynamicItems(this.collectDynamicItems());
       }
       if (e.target.dataset.dpattern) {
+        e.preventDefault();
         const firstEmpty = [...document.querySelectorAll(".d-item-number")].find(i => !i.value.trim()) || document.querySelector(".d-item-number");
         if (firstEmpty) {
           firstEmpty.value = e.target.dataset.dpattern;
           firstEmpty.focus();
         }
       }
+      if (e.target.dataset.rmethod) {
+        e.preventDefault();
+        document.getElementById("dReportMethodInput").value = e.target.dataset.rmethod;
+      }
+    });
+
+    document.getElementById("view-delivery").addEventListener("click", (e) => {
       if (e.target.dataset.loadDtask) {
         this.loadTask(e.target.dataset.loadDtask, parseInt(e.target.dataset.dopenStage || "1", 10));
       }
@@ -1933,6 +2009,13 @@ const DeliveryModule = {
       this.saveGroupReport();
     });
 
+    // Collapsible Reported Advanced Filters Toggle
+    document.getElementById("btnToggleHistoryFilters").addEventListener("click", () => {
+      this.filtersOpen = !this.filtersOpen;
+      document.getElementById("dHistoryAdvancedFilters").classList.toggle("hidden", !this.filtersOpen);
+      this.renderHistory();
+    });
+
     ["dHistorySearch", "dHistorySort", "dHistoryFilterDirection", "dHistoryFilterStatus", "dHistoryFilterOffice", "dHistoryFilterNature", "dHistoryFilterDesig", "dHistoryFilterReceiver", "dHistoryDateFrom", "dHistoryDateTo"].forEach(id => {
       const el = document.getElementById(id);
       if (el) {
@@ -1975,7 +2058,7 @@ const DeliveryModule = {
     document.getElementById("btnRequestDeleteHistory").addEventListener("click", () => {
       document.getElementById("deliveryDeleteWarningBox").classList.remove("hidden");
       document.getElementById("deliveryEditWarningBox").classList.add("hidden");
-      document.getElementById("deliveryReportFooter").classList.add("hidden");
+      document.getElementById("deliveryReportFooter").classList.remove("hidden");
     });
     document.getElementById("btnCancelHistoryDeleteWarn").addEventListener("click", () => {
       document.getElementById("deliveryDeleteWarningBox").classList.add("hidden");
