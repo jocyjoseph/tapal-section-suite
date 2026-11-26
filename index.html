@@ -359,6 +359,15 @@
           <span class="chevron" id="dChev1">▶</span>
         </div>
         <div class="accordion-body collapsed" id="dBody1">
+          <!-- COLLECTION RESULT TOGGLE (ONLY SHOWN FOR INWARD COLLECTION) -->
+          <div class="form-group hidden" id="dCollectionModeGroup" style="margin-top:0; padding-bottom:8px; border-bottom:1px dashed #cbd5e1;">
+            <label>Collection Result</label>
+            <div class="toggle-row" id="dCollectionResultToggle">
+              <button type="button" class="toggle-btn selected" data-val="Docs">📄 Documents Collected</button>
+              <button type="button" class="toggle-btn" data-val="Nil">🚫 Nil / No Documents</button>
+            </div>
+          </div>
+
           <!-- 1. Date & Time (All Modes) -->
           <div class="form-group">
             <label id="lblDCreatedDT">1. Date & Time</label>
@@ -416,75 +425,84 @@
             </div>
             <datalist id="dDesigList"></datalist>
 
-            <div class="form-group">
+            <div class="form-group" id="dSectionGroup">
               <label id="lblDSection">4. Section</label>
               <div id="dSectionChips" class="chip-wrap mb-6"></div>
               <input type="text" id="dSection" list="dSectionList" placeholder="Select or type section..." />
             </div>
             <datalist id="dSectionList"></datalist>
 
-            <div class="form-group">
-              <label id="lblDNature">5. Nature of File / Document</label>
-              <div id="dNatureChips" class="chip-wrap mb-6"></div>
-              <input type="text" id="dNature" list="dNatureList" value="File" placeholder="e.g. File, Tapal, Cheque, Bill..." />
+            <!-- NIL VISIT REMARKS (ONLY SHOWN WHEN COLLECTION RESULT IS "NIL") -->
+            <div class="form-group hidden" id="dNilVisitRemarksGroup">
+              <label>4. Visit Remarks / Official Contacted <span class="muted small">(Optional)</span></label>
+              <input type="text" id="dNilVisitRemarks" placeholder="e.g. Checked with Tapal clerk; no pending files..." />
             </div>
-            <datalist id="dNatureList"></datalist>
 
-            <div class="form-group">
-              <label id="lblDItemCount">6. No. of File / Document</label>
-              <div class="row-gap">
-                <div class="stepper-row" style="max-width:160px;">
-                  <button type="button" class="step-btn" id="btnDCountMinus">−</button>
-                  <input type="number" id="dItemCount" value="1" min="1" max="30" />
-                  <button type="button" class="step-btn" id="btnDCountPlus">+</button>
-                </div>
-                <div id="dSameVariousWrap" class="toggle-row hidden" style="flex:1;">
-                  <button type="button" class="toggle-btn selected" data-dmode="Same" id="btnDModeSame">Same</button>
-                  <button type="button" class="toggle-btn" data-dmode="Various" id="btnDModeVarious">Various</button>
-                </div>
+            <!-- FILE / ITEM DETAILS (HIDDEN FOR NIL COLLECTION VISITS) -->
+            <div id="dFileItemsSectionWrap">
+              <div class="form-group">
+                <label id="lblDNature">5. Nature of File / Document</label>
+                <div id="dNatureChips" class="chip-wrap mb-6"></div>
+                <input type="text" id="dNature" list="dNatureList" value="File" placeholder="e.g. File, Tapal, Cheque, Bill..." />
               </div>
-            </div>
-            <div class="form-group">
-              <label id="lblDItemNumbers">7. File Number</label>
-              <div id="dPatternChips" class="chip-wrap mb-6"></div>
-              <div id="dDynamicItemsWrap"></div>
-            </div>
-            <div class="form-group">
-              <label id="lblDDescription">8. Description <span class="muted small">(Optional)</span></label>
-              <input type="text" id="dDescription" placeholder="Brief subject or note..." />
-            </div>
-            <div class="form-group">
-              <label id="lblDAttachments">9. Attachments?</label>
-              <div class="toggle-row" id="dAttachToggleGroup">
-                <button type="button" class="toggle-btn" data-val="Yes">Yes</button>
-                <button type="button" class="toggle-btn selected" data-val="No">No</button>
-              </div>
-            </div>
-            <div id="dAttachmentsBox" class="dynamic-schema-box hidden">
-              <div class="form-group" style="margin-top:0;">
-                <label>No. of Attachments</label>
-                <div class="stepper-row" style="max-width:160px;">
-                  <button type="button" class="step-btn" id="btnDAttachMinus">−</button>
-                  <input type="number" id="dAttachCount" value="1" min="1" max="20" />
-                  <button type="button" class="step-btn" id="btnDAttachPlus">+</button>
+              <datalist id="dNatureList"></datalist>
+
+              <div class="form-group">
+                <label id="lblDItemCount">6. No. of File / Document</label>
+                <div class="row-gap">
+                  <div class="stepper-row" style="max-width:160px;">
+                    <button type="button" class="step-btn" id="btnDCountMinus">−</button>
+                    <input type="number" id="dItemCount" value="1" min="1" max="30" />
+                    <button type="button" class="step-btn" id="btnDCountPlus">+</button>
+                  </div>
+                  <div id="dSameVariousWrap" class="toggle-row hidden" style="flex:1;">
+                    <button type="button" class="toggle-btn selected" data-dmode="Same" id="btnDModeSame">Same</button>
+                    <button type="button" class="toggle-btn" data-dmode="Various" id="btnDModeVarious">Various</button>
+                  </div>
                 </div>
               </div>
               <div class="form-group">
-                <label>Attachment Details</label>
-                <div id="dAttachRowsWrap"></div>
+                <label id="lblDItemNumbers">7. File Number</label>
+                <div id="dPatternChips" class="chip-wrap mb-6"></div>
+                <div id="dDynamicItemsWrap"></div>
               </div>
-            </div>
-            <div class="form-group" id="dPlannedDTGroup">
-              <label>10. Planned Delivery Time</label>
-              <div class="dt-controls">
-                <input type="datetime-local" id="dPlannedDT" data-allow-future="true" />
-                <button type="button" class="btn-mini accent" id="btnDPlanToday3PM">3 PM</button>
-                <button type="button" class="btn-mini accent" id="btnDPlanToday5PM">5 PM</button>
+              <div class="form-group">
+                <label id="lblDDescription">8. Description <span class="muted small">(Optional)</span></label>
+                <input type="text" id="dDescription" placeholder="Brief subject or note..." />
+              </div>
+              <div class="form-group">
+                <label id="lblDAttachments">9. Attachments?</label>
+                <div class="toggle-row" id="dAttachToggleGroup">
+                  <button type="button" class="toggle-btn" data-val="Yes">Yes</button>
+                  <button type="button" class="toggle-btn selected" data-val="No">No</button>
+                </div>
+              </div>
+              <div id="dAttachmentsBox" class="dynamic-schema-box hidden">
+                <div class="form-group" style="margin-top:0;">
+                  <label>No. of Attachments</label>
+                  <div class="stepper-row" style="max-width:160px;">
+                    <button type="button" class="step-btn" id="btnDAttachMinus">−</button>
+                    <input type="number" id="dAttachCount" value="1" min="1" max="20" />
+                    <button type="button" class="step-btn" id="btnDAttachPlus">+</button>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label>Attachment Details</label>
+                  <div id="dAttachRowsWrap"></div>
+                </div>
+              </div>
+              <div class="form-group" id="dPlannedDTGroup">
+                <label>10. Planned Delivery Time</label>
+                <div class="dt-controls">
+                  <input type="datetime-local" id="dPlannedDT" data-allow-future="true" />
+                  <button type="button" class="btn-mini accent" id="btnDPlanToday3PM">3 PM</button>
+                  <button type="button" class="btn-mini accent" id="btnDPlanToday5PM">5 PM</button>
+                </div>
               </div>
             </div>
           </div>
 
-          <div class="form-group">
+          <div class="form-group" id="dUrgencyFieldGroup">
             <label id="lblDUrgency">Urgency Scale</label>
             <div class="toggle-row" id="dUrgencyGroup">
               <button type="button" class="toggle-btn selected" data-val="Normal">Normal</button>
@@ -753,7 +771,9 @@
           <select id="dHistoryFilterDirection" style="flex:1; min-width:120px;">
             <option value="ALL">Type: All</option>
             <option value="Outward">📤 Delivery</option>
-            <option value="Inward">📥 Collection</option>
+            <option value="Inward">📥 Collection (All)</option>
+            <option value="Inward_Docs">📥 Collection (Docs)</option>
+            <option value="Inward_Nil">📥 Collection (Nil Visit)</option>
             <option value="Enquiry">🔍 Enquiry</option>
             <option value="Round-Trip">🔄 Round-Trip</option>
           </select>
