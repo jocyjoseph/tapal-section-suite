@@ -316,3 +316,32 @@ input[type="text"], input[type="number"], input[type="datetime-local"], input[ty
 .task-tile.very-urgent { border-left: 4px solid var(--danger); }
 .task-tile.urgent { border-left: 4px solid #d97706; }
 .task-tile.normal { border-left: 4px solid var(--primary); }
+
+/* Single-line clutter-free ledger rows for Scheduled, Completed & Reported cards */
+.card-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  line-height: 1.35;
+}
+
+.card-line + .card-line {
+  margin-top: 4px;
+}
+
+.card-line-text {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card-line-actions {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
