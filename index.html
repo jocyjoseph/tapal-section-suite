@@ -190,8 +190,8 @@
               <button type="button" class="toggle-btn" data-val="No">No</button>
             </div>
             <div id="pSomNoBox" class="no-reason-box hidden">
-              <div id="pSomNoChips" class="chip-wrap mb-6"></div>
               <input type="text" id="pSomNoReason" placeholder="Reason why SOM was not received..." />
+              <div id="pSomNoChips" class="chip-wrap"></div>
             </div>
           </div>
           <div class="form-group">
@@ -201,8 +201,8 @@
               <button type="button" class="toggle-btn" data-val="No">No</button>
             </div>
             <div id="pRecNoBox" class="no-reason-box hidden">
-              <div id="pRecNoChips" class="chip-wrap mb-6"></div>
               <input type="text" id="pRecNoReason" placeholder="Reason why Receipt was not received..." />
+              <div id="pRecNoChips" class="chip-wrap"></div>
             </div>
           </div>
           <div class="form-group">
@@ -216,8 +216,8 @@
           </div>
           <div class="form-group">
             <label>Comments</label>
-            <div id="pPoCommentChips" class="chip-wrap mb-6"></div>
             <input type="text" id="pPoComments" placeholder="Posting remarks..." />
+            <div id="pPoCommentChips" class="chip-wrap"></div>
           </div>
           <button type="button" class="btn btn-primary btn-block mt-12" data-save-pstage="2">Save Posting</button>
         </div>
@@ -243,8 +243,8 @@
               <button type="button" class="toggle-btn" data-val="No">No</button>
             </div>
             <div id="pTapalNoBox" class="no-reason-box hidden">
-              <div id="pTapalNoChips" class="chip-wrap mb-6"></div>
               <input type="text" id="pTapalNoReason" placeholder="Reason why not given to Tapal..." />
+              <div id="pTapalNoChips" class="chip-wrap"></div>
             </div>
           </div>
           <div class="form-group">
@@ -258,13 +258,13 @@
           </div>
           <div class="form-group">
             <label>Received by</label>
-            <div id="pNameChips" class="chip-wrap mb-6"></div>
             <input type="text" id="pReceivedBy" placeholder="Staff name" />
+            <div id="pNameChips" class="chip-wrap"></div>
           </div>
           <div class="form-group">
             <label>Comments</label>
-            <div id="pCommentChips" class="chip-wrap mb-6"></div>
             <input type="text" id="pComments" placeholder="Tapal remarks..." />
+            <div id="pCommentChips" class="chip-wrap"></div>
           </div>
           <div class="row-gap mt-12">
             <button type="button" class="btn btn-primary" style="flex:1;" data-save-pstage="3">Save Reporting</button>
@@ -325,9 +325,9 @@
 
     <div id="dsub-entry" class="dsub-panel">
       <div class="row-between mb-8">
-        <button type="button" id="btnNewDelivery" class="btn btn-primary btn-sm">Create New</button>
+        <span id="dSchedulingInstruction" class="micro-label" style="margin:0;">Choose the task type</span>
         <div class="row-gap">
-          <span id="dActiveTaskBanner" class="badge primary">New Delivery</span>
+          <button type="button" id="btnNewDelivery" class="btn-mini hidden">Reset</button>
           <button type="button" id="btnToggleExpandAllDelivery" class="btn-mini accent">Expand All</button>
         </div>
       </div>
@@ -358,7 +358,7 @@
           <span class="chevron" id="dChev1">▶</span>
         </div>
         <div class="accordion-body collapsed" id="dBody1">
-          <!-- COLLECTION RESULT TOGGLE (ONLY SHOWN FOR INWARD COLLECTION) -->
+          <!-- COLLECTION RESULT TOGGLE -->
           <div class="form-group hidden" id="dCollectionModeGroup" style="margin-top:0; padding-bottom:8px; border-bottom:1px dashed #cbd5e1;">
             <label>Collection Result</label>
             <div class="toggle-row" id="dCollectionResultToggle">
@@ -367,7 +367,7 @@
             </div>
           </div>
 
-          <!-- 1. Date & Time (All Modes) -->
+          <!-- 1. Date & Time -->
           <div class="form-group">
             <label id="lblDCreatedDT">1. Date & Time</label>
             <div class="dt-controls">
@@ -382,13 +382,13 @@
           <div id="dEnquiryStage1Wrap" class="hidden">
             <div class="form-group">
               <label>2. Enquirer</label>
-              <div id="dEnquirerChips" class="chip-wrap mb-6"></div>
               <input type="text" id="dEnquirerName" placeholder="Staff / clerk requesting enquiry..." />
+              <div id="dEnquirerChips" class="chip-wrap"></div>
             </div>
             <div class="form-group">
               <label>3. To Office</label>
-              <div id="dEnquiryOfficeChips" class="chip-wrap mb-6"></div>
               <input type="text" id="dEnquiryOfficeName" list="dOfficeList" placeholder="Select or type office name..." />
+              <div id="dEnquiryOfficeChips" class="chip-wrap"></div>
             </div>
             <div class="form-group">
               <div class="row-between mb-6">
@@ -399,32 +399,32 @@
             </div>
           </div>
 
-          <!-- DOCUMENT STAGE 1 FIELDS (DELIVERY, COLLECTION & ROUND-TRIP) -->
+          <!-- DOCUMENT STAGE 1 FIELDS -->
           <div id="dDocumentStage1Wrap">
             <div class="form-group hidden" id="dRtFileGivenByGroup">
               <label>2. File Given by</label>
-              <div id="dFileGivenByChips" class="chip-wrap mb-6"></div>
               <input type="text" id="dFileGivenBy" placeholder="Staff who handed over the file..." />
+              <div id="dFileGivenByChips" class="chip-wrap"></div>
             </div>
 
             <div class="form-group" id="dOfficeNameGroup">
               <label id="lblDOfficeName">2. To Office Name</label>
-              <div id="dOfficeChips" class="chip-wrap mb-6"></div>
               <input type="text" id="dOfficeName" list="dOfficeList" placeholder="Select or type office name..." />
+              <div id="dOfficeChips" class="chip-wrap"></div>
             </div>
             <datalist id="dOfficeList"></datalist>
 
             <div class="form-group" id="dDesignationGroup">
               <label id="lblDDesignation">3. Designation</label>
-              <div id="dDesigChips" class="chip-wrap mb-6"></div>
               <input type="text" id="dDesignation" list="dDesigList" placeholder="Select or type designation..." />
+              <div id="dDesigChips" class="chip-wrap"></div>
             </div>
             <datalist id="dDesigList"></datalist>
 
             <div class="form-group" id="dSectionGroup">
               <label id="lblDSection">4. Section</label>
-              <div id="dSectionChips" class="chip-wrap mb-6"></div>
               <input type="text" id="dSection" list="dSectionList" placeholder="Select or type section..." />
+              <div id="dSectionChips" class="chip-wrap"></div>
             </div>
             <datalist id="dSectionList"></datalist>
 
@@ -436,8 +436,8 @@
             <div id="dFileItemsSectionWrap">
               <div class="form-group">
                 <label id="lblDNature">5. Nature of File / Document</label>
-                <div id="dNatureChips" class="chip-wrap mb-6"></div>
                 <input type="text" id="dNature" list="dNatureList" value="File" placeholder="e.g. File, Tapal, Cheque, Bill..." />
+                <div id="dNatureChips" class="chip-wrap"></div>
               </div>
               <datalist id="dNatureList"></datalist>
 
@@ -456,16 +456,12 @@
                 </div>
               </div>
               <div class="form-group">
-                <label id="lblDItemNumbers">7. File Number</label>
-                <div id="dPatternChips" class="chip-wrap mb-6"></div>
+                <label id="lblDItemNumbers">7. File Number & Description</label>
                 <div id="dDynamicItemsWrap"></div>
+                <div id="dPatternChips" class="chip-wrap"></div>
               </div>
               <div class="form-group">
-                <label id="lblDDescription">8. Description <span class="muted small">(Optional)</span></label>
-                <input type="text" id="dDescription" placeholder="Brief subject or note..." />
-              </div>
-              <div class="form-group">
-                <label id="lblDAttachments">9. Attachments?</label>
+                <label id="lblDAttachments">8. Attachments?</label>
                 <div class="toggle-row" id="dAttachToggleGroup">
                   <button type="button" class="toggle-btn" data-val="Yes">Yes</button>
                   <button type="button" class="toggle-btn selected" data-val="No">No</button>
@@ -486,7 +482,7 @@
                 </div>
               </div>
               <div class="form-group" id="dPlannedDTGroup">
-                <label>10. Planned Delivery Time</label>
+                <label>9. Planned Delivery Time</label>
                 <div class="dt-controls">
                   <input type="datetime-local" id="dPlannedDT" data-allow-future="true" />
                   <button type="button" class="btn-mini accent" id="btnDPlanToday3PM">3 PM</button>
@@ -523,7 +519,6 @@
           <span class="chevron" id="dChev2">▶</span>
         </div>
         <div class="accordion-body collapsed" id="dBody2">
-          <!-- A: DELIVERY & COLLECTION STAGE 2 -->
           <div id="dStage2StandardWrap">
             <div class="form-group">
               <label>1. Delivery Status</label>
@@ -534,8 +529,8 @@
             </div>
             <div id="dNotDeliveredBox" class="no-reason-box hidden">
               <label class="danger-text">2. Not Delivered Reason (Required)</label>
-              <div id="dNotDelivChips" class="chip-wrap mb-6"></div>
               <input type="text" id="dNotDelivReason" placeholder="Why was it not delivered?" />
+              <div id="dNotDelivChips" class="chip-wrap"></div>
             </div>
             <div class="form-group">
               <label id="lblDCompletedDT">3. Date & Time</label>
@@ -548,8 +543,8 @@
             </div>
             <div class="form-group">
               <label id="lblDStage2Receiver">4. Receiver's Name</label>
-              <div id="dStage2ReceiverChips" class="chip-wrap mb-6"></div>
               <input type="text" id="dStage2ReceiverName" placeholder="Name of person who received the file/document..." />
+              <div id="dStage2ReceiverChips" class="chip-wrap"></div>
             </div>
             <div class="form-group">
               <label>5. Comments</label>
@@ -557,7 +552,6 @@
             </div>
           </div>
 
-          <!-- B: ENQUIRY STAGE 2 (REPLY, RESPONDENT, DATE & TIME OF REPLY) -->
           <div id="dStage2EnquiryWrap" class="hidden">
             <div class="form-group">
               <label>1. Reply</label>
@@ -565,8 +559,8 @@
             </div>
             <div class="form-group">
               <label>2. Respondent</label>
-              <div id="dRespondentChips" class="chip-wrap mb-6"></div>
               <input type="text" id="dRespondentName" placeholder="Name / designation of person who gave the reply..." />
+              <div id="dRespondentChips" class="chip-wrap"></div>
             </div>
             <div class="form-group">
               <label>3. Date & Time of Reply</label>
@@ -579,7 +573,6 @@
             </div>
           </div>
 
-          <!-- C: ROUND-TRIP STAGE 2 (RECURSIVE OFFICE DETAILS CHAIN) -->
           <div id="dStage2RoundTripWrap" class="hidden">
             <div id="dRoundTripStopsList"></div>
           </div>
@@ -603,7 +596,6 @@
           <span class="chevron" id="dChev3">▶</span>
         </div>
         <div class="accordion-body collapsed" id="dBody3">
-          <!-- A: OUTWARD DELIVERY STAGE 3 -->
           <div id="dStage3OutwardWrap">
             <div id="dBatchReportBanner" class="som-strip hidden">
               <span class="som-strip-title" id="dBatchReportText">Batch Reporting</span>
@@ -618,14 +610,14 @@
             </div>
             <div id="dReceiptNoBox" class="no-reason-box hidden">
               <label class="danger-text">2. Reason Why Receipt Was Not Given (Required)</label>
-              <div id="dReceiptNoChips" class="chip-wrap mb-6"></div>
               <input type="text" id="dReceiptNoReason" placeholder="Enter reason..." />
+              <div id="dReceiptNoChips" class="chip-wrap"></div>
             </div>
             <div id="dReceiptYesFields" class="hidden">
               <div class="form-group">
                 <label>3. Receipt Receiver's Name</label>
-                <div id="dReceiverChips" class="chip-wrap mb-6"></div>
                 <input type="text" id="dReceiverName" placeholder="Staff who received the signed receipt" />
+                <div id="dReceiverChips" class="chip-wrap"></div>
               </div>
               <div class="form-group">
                 <label>4. Date & Time of Receiving</label>
@@ -639,7 +631,6 @@
             </div>
           </div>
 
-          <!-- B: ENQUIRY STAGE 3 (REPORTING TO ENQUIRER) -->
           <div id="dStage3EnquiryWrap" class="hidden">
             <div class="form-group">
               <label>1. Report Status</label>
@@ -660,6 +651,7 @@
               </div>
               <div class="form-group">
                 <label>3. Method of Reporting</label>
+                <input type="text" id="dReportMethodInput" placeholder="Direct, Phone Call, SMS, WhatsApp..." />
                 <div class="chip-wrap" id="dReportMethodGroup">
                   <button type="button" class="smart-chip" data-rmethod="Direct">Direct</button>
                   <button type="button" class="smart-chip" data-rmethod="Phone Call">Phone Call</button>
@@ -667,7 +659,6 @@
                   <button type="button" class="smart-chip" data-rmethod="WhatsApp">WhatsApp</button>
                   <button type="button" class="smart-chip" data-rmethod="Voice Message">Voice Message</button>
                 </div>
-                <input type="text" id="dReportMethodInput" class="mt-6" placeholder="Select pill or type method..." />
               </div>
             </div>
             <div class="form-group">
@@ -676,12 +667,11 @@
             </div>
           </div>
 
-          <!-- C: ROUND-TRIP STAGE 3 (RETURN TO OFFICE) -->
           <div id="dStage3RoundTripWrap" class="hidden">
             <div class="form-group">
               <label>1. File / Doc Received By</label>
-              <div id="dRtDocReceiverChips" class="chip-wrap mb-6"></div>
               <input type="text" id="dRtDocReceiverName" placeholder="Staff who received the returned file/doc..." />
+              <div id="dRtDocReceiverChips" class="chip-wrap"></div>
             </div>
             <div class="form-group">
               <label>2. Date & Time</label>
@@ -701,14 +691,14 @@
             </div>
             <div id="dRtReceiptNoBox" class="no-reason-box hidden">
               <label class="danger-text">Reason Why Receipt Was Not Received (Required)</label>
-              <div id="dRtReceiptNoChips" class="chip-wrap mb-6"></div>
               <input type="text" id="dRtReceiptNoReason" placeholder="Enter reason..." />
+              <div id="dRtReceiptNoChips" class="chip-wrap"></div>
             </div>
             <div id="dRtReceiptYesFields" class="hidden">
               <div class="form-group">
                 <label>Receipt Received By (Staff Name)</label>
-                <div id="dRtReceiptReceiverChips" class="chip-wrap mb-6"></div>
                 <input type="text" id="dRtReceiptReceiverName" placeholder="Staff who received the receipt..." />
+                <div id="dRtReceiptReceiverChips" class="chip-wrap"></div>
               </div>
             </div>
             <div class="form-group">
@@ -722,7 +712,7 @@
       </section>
     </div>
 
-    <!-- SCHEDULED TAB (SPLIT INTO OUTWARD & INWARD TASKS) -->
+    <!-- SCHEDULED TAB -->
     <div id="dsub-tasks" class="dsub-panel hidden">
       <div class="row-between mb-8">
         <div class="toggle-row" id="dScheduledDirTabs" style="flex:1; margin-right:8px;">
@@ -734,11 +724,11 @@
       <div id="dActiveTasksList"></div>
     </div>
 
-    <!-- COMPLETED TAB (FORMERLY UNREPORTED) -->
+    <!-- COMPLETED TAB -->
     <div id="dsub-unreported" class="dsub-panel hidden">
       <section class="card">
         <div class="row-between">
-          <span class="micro-label" style="margin:0;">Completed — Awaiting Reporting (<span id="dSelectedUnrepCount">0</span>)</span>
+          <span class="micro-label" style="margin:0;">Completed (<span id="dSelectedUnrepCount">0</span>)</span>
           <div class="row-gap">
             <button type="button" id="btnSelectAllUnrep" class="btn-mini">All</button>
             <button type="button" id="btnBatchReportUnrep" class="btn btn-success btn-sm">Report Selected →</button>
@@ -748,52 +738,64 @@
       <div id="dUnreportedTasksList"></div>
     </div>
 
-    <!-- REPORTED TAB (FORMERLY HISTORY) -->
+    <!-- REPORTED TAB (COLLAPSIBLE ADVANCED SEARCH & FILTERS + LABELED DATE INPUTS) -->
     <div id="dsub-history" class="dsub-panel hidden">
       <section class="card">
         <div class="row-gap">
-          <input type="text" id="dHistorySearch" placeholder="Search file no, enquiry, respondent, receiver..." />
-          <select id="dHistorySort" style="max-width:145px;">
-            <option value="NEWEST">Sort: Newest</option>
-            <option value="OLDEST">Sort: Oldest</option>
-            <option value="OFFICE">Sort: Office A–Z</option>
-            <option value="NATURE">Sort: Nature A–Z</option>
-          </select>
+          <input type="text" id="dHistorySearch" placeholder="Search file no, office, person..." />
+          <button type="button" id="btnToggleHistoryFilters" class="btn-mini">Filters ▾</button>
         </div>
-        <div class="row-gap mt-8" style="flex-wrap:wrap;">
-          <select id="dHistoryFilterDirection" style="flex:1; min-width:120px;">
-            <option value="ALL">Type: All</option>
-            <option value="Outward">Delivery</option>
-            <option value="Inward">Collection (All)</option>
-            <option value="Inward_Docs">Collection (Docs)</option>
-            <option value="Inward_Nil">Collection (Nil Visit)</option>
-            <option value="Enquiry">Enquiry</option>
-            <option value="Round-Trip">Round-Trip</option>
-          </select>
-          <select id="dHistoryFilterStatus" style="flex:1; min-width:120px;">
-            <option value="ALL">Receipt: All</option>
-            <option value="GIVEN">Receipt Given</option>
-            <option value="NOT_GIVEN">No Receipt</option>
-          </select>
-          <select id="dHistoryFilterOffice" style="flex:1; min-width:120px;">
-            <option value="ALL">Office: All</option>
-          </select>
-        </div>
-        <div class="row-gap mt-8" style="flex-wrap:wrap;">
-          <select id="dHistoryFilterNature" style="flex:1; min-width:120px;">
-            <option value="ALL">Nature: All</option>
-          </select>
-          <select id="dHistoryFilterDesig" style="flex:1; min-width:120px;">
-            <option value="ALL">Designation: All</option>
-          </select>
-          <select id="dHistoryFilterReceiver" style="flex:1; min-width:120px;">
-            <option value="ALL">Staff / Person: All</option>
-          </select>
-        </div>
-        <div class="row-gap mt-8">
-          <input type="date" id="dHistoryDateFrom" />
-          <input type="date" id="dHistoryDateTo" />
-          <button type="button" id="btnResetDHistoryFilters" class="btn btn-secondary btn-sm">Reset</button>
+
+        <div id="dHistoryAdvancedFilters" class="hidden mt-8" style="padding-top:8px; border-top:1px dashed #cbd5e1;">
+          <div class="row-gap" style="flex-wrap:wrap;">
+            <select id="dHistoryFilterDirection" style="flex:1; min-width:120px;">
+              <option value="ALL">Type: All</option>
+              <option value="Outward">Delivery</option>
+              <option value="Inward">Collection (All)</option>
+              <option value="Inward_Docs">Collection (Docs)</option>
+              <option value="Inward_Nil">Collection (Nil Visit)</option>
+              <option value="Enquiry">Enquiry</option>
+              <option value="Round-Trip">Round-Trip</option>
+            </select>
+            <select id="dHistoryFilterStatus" style="flex:1; min-width:120px;">
+              <option value="ALL">Receipt: All</option>
+              <option value="GIVEN">Receipt Given</option>
+              <option value="NOT_GIVEN">No Receipt</option>
+            </select>
+            <select id="dHistorySort" style="flex:1; min-width:120px;">
+              <option value="NEWEST">Sort: Newest</option>
+              <option value="OLDEST">Sort: Oldest</option>
+              <option value="OFFICE">Sort: Office A–Z</option>
+              <option value="NATURE">Sort: Nature A–Z</option>
+            </select>
+          </div>
+          <div class="row-gap mt-8" style="flex-wrap:wrap;">
+            <select id="dHistoryFilterOffice" style="flex:1; min-width:120px;">
+              <option value="ALL">Office: All</option>
+            </select>
+            <select id="dHistoryFilterNature" style="flex:1; min-width:120px;">
+              <option value="ALL">Nature: All</option>
+            </select>
+          </div>
+          <div class="row-gap mt-8" style="flex-wrap:wrap;">
+            <select id="dHistoryFilterDesig" style="flex:1; min-width:120px;">
+              <option value="ALL">Designation: All</option>
+            </select>
+            <select id="dHistoryFilterReceiver" style="flex:1; min-width:120px;">
+              <option value="ALL">Staff / Person: All</option>
+            </select>
+          </div>
+          <div class="row-gap mt-8" style="align-items:flex-end;">
+            <div style="flex:1;">
+              <label class="small muted" style="display:block; margin-bottom:2px;">From Date</label>
+              <input type="date" id="dHistoryDateFrom" />
+            </div>
+            <div style="flex:1;">
+              <label class="small muted" style="display:block; margin-bottom:2px;">To Date</label>
+              <input type="date" id="dHistoryDateTo" />
+            </div>
+            <button type="button" id="btnResetDHistoryFilters" class="btn btn-secondary btn-sm">Reset</button>
+          </div>
         </div>
       </section>
       <div class="micro-label" id="dHistoryCountLabel">0 records</div>
@@ -823,10 +825,12 @@
     <div id="asub-search" class="asub-panel">
       <section class="card">
         <div class="row-gap">
-          <input type="text" id="addrSearchInput" placeholder="Name, Code, Place, PIN..." autocomplete="off" />
+          <input type="text" id="addrSearchInput" placeholder="Name, Code, Place, PIN..." autocomplete="off" style="flex:1.4;" />
+          <select id="addrDistrictSelect" style="flex:1;">
+            <option value="ALL">District: All</option>
+          </select>
           <button type="button" id="btnClearAddrSearch" class="btn btn-secondary btn-sm">×</button>
         </div>
-        <div id="districtFilterScroll" class="chip-scroll mt-8"></div>
       </section>
 
       <div class="row-between mb-8">
@@ -1058,14 +1062,14 @@
       </div>
       <div id="grpReceiptNoBox" class="no-reason-box hidden">
         <label class="danger-text">2. Reason Why Receipt Was Not Given (Required)</label>
-        <div id="grpReceiptNoChips" class="chip-wrap mb-6"></div>
         <input type="text" id="grpReceiptNoReason" placeholder="Enter reason..." />
+        <div id="grpReceiptNoChips" class="chip-wrap"></div>
       </div>
       <div id="grpReceiptYesFields" class="hidden">
         <div class="form-group">
           <label>3. Receiver's Name</label>
-          <div id="grpReceiverChips" class="chip-wrap mb-6"></div>
           <input type="text" id="grpReceiverName" placeholder="Name of person who received receipt" />
+          <div id="grpReceiverChips" class="chip-wrap"></div>
         </div>
         <div class="form-group">
           <label>4. Date & Time of Receiving</label>
@@ -1115,7 +1119,7 @@
     </div>
   </div>
 
-  <!-- Read-Only Inward/Outward Report Modal -->
+  <!-- Structured 3-Section Task Detailed Report Modal -->
   <div id="deliveryReportModal" class="modal hidden no-print">
     <div class="modal-card" style="max-width:460px; max-height:90vh; overflow-y:auto;">
       <div class="row-between">
