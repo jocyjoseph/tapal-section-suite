@@ -59,6 +59,43 @@ const DeliveryModule = {
     return `<span class="badge primary">📤 Delivery</span>`;
   },
 
+  // Builds Row 2: one strict single-line row per file/doc/enquiry ({Serial}, {File No.} - {Description})
+  buildItemLinesHTML(t) {
+    const dir = t.Direction || "Outward";
+    const desc = String(t.Description || "").trim();
+
+    if (this.isNilCollection(t)) {
+      const txt = desc ? `1. Nil - ${desc}` : `1. Nil (No documents)`;
+      return `<div class="card-line small"><span class="card-line-text">${txt}</span></div>`;
+    }
+
+    if (dir === "Enquiry") {
+      let enqs = [];
+      try { enqs = JSON.parse(t.Enquiries_JSON || "[]"); } catch (e) {}
+      const valid = enqs.filter(e => e && String(e.question || "").trim());
+      if (valid.length) {
+        return valid.map((e, idx) =>
+          `<div class="card-line small"><span class="card-line-text">${idx + 1}. ${String(e.question).trim()}</span></div>`
+        ).join("");
+      }
+      return `<div class="card-line small"><span class="card-line-text">1. ${t.Enquiry_Text || "Enquiry"}</span></div>`;
+    }
+
+    let items = [];
+    try { items = JSON.parse(t.Items_JSON || "[]"); } catch (e) {}
+    if (!items.length) {
+      items = [{ nature: t.Nature || "File", number: "" }];
+    }
+
+    return items.map((it, idx) => {
+      const nat = String(it.nature || t.Nature || "File").trim();
+      const num = String(it.number || "").trim();
+      const filePart = num ? `${nat} #${num}` : nat;
+      const lineText = desc ? `${idx + 1}. ${filePart} - ${desc}` : `${idx + 1}. ${filePart}`;
+      return `<div class="card-line small"><span class="card-line-text">${lineText}</span></div>`;
+    }).join("");
+  },
+
   // =========================================================
   // DIRECTION-AWARE UI LABELS & STAGE VISIBILITY
   // =========================================================
@@ -84,7 +121,6 @@ const DeliveryModule = {
 
     document.getElementById("dCollectionModeGroup").classList.toggle("hidden", !isInward);
 
-    // Stage 1 layout & clean titles
     document.getElementById("dEnquiryStage1Wrap").classList.toggle("hidden", !isEnquiry);
     document.getElementById("dDocumentStage1Wrap").classList.toggle("hidden", isEnquiry);
 
@@ -137,7 +173,6 @@ const DeliveryModule = {
       document.getElementById("btnSaveDStage1").textContent = "Save Preparation";
     }
 
-    // Stage 2 layout & clean titles
     const isNilCol = isInward && (this.getToggle("dCollectionResultToggle") === "Nil");
     document.getElementById("dCard2").classList.toggle("hidden", isNilCol);
     document.getElementById("dStage2StandardWrap").classList.toggle("hidden", isEnquiry || isRoundTrip);
@@ -164,7 +199,6 @@ const DeliveryModule = {
       document.getElementById("btnSaveDStage2").textContent = "Save Delivery";
     }
 
-    // Stage 3 layout & clean titles
     document.getElementById("dCard3").classList.toggle("hidden", isInward);
     document.getElementById("dStage3OutwardWrap").classList.toggle("hidden", !isOutward);
     document.getElementById("dStage3EnquiryWrap").classList.toggle("hidden", !isEnquiry);
@@ -692,7 +726,7 @@ const DeliveryModule = {
       this.currentTask.Attachment_Count = hasAtt === "Yes" ? atts.length : 0;
       this.currentTask.Attachments_JSON = JSON.stringify(atts);
       if (!this.currentTask.Office_Name) {
-        this.currentTask.Office_Name = `From ${givenBy}${this.currentTask.Section ? " (" + this.currentTask.Section + ")" : ""}`;
+        this.currentTask.Office_Name = `From ${givenBy}`;
       }
     } else if (direction === "Inward" && this.getToggle("dCollectionResultToggle") === "Nil") {
       const office = document.getElementById("dOfficeName").value.trim();
@@ -1147,7 +1181,6 @@ const DeliveryModule = {
       return;
     }
 
-    // Outward Delivery & Inward Collection
     const s1Done = Boolean(t.Office_Name && t.Created_DateTime);
     const isNil = this.isNilCollection(t) || (dir === "Inward" && this.getToggle("dCollectionResultToggle") === "Nil");
     document.getElementById("dSummary1").textContent = s1Done
@@ -1268,7 +1301,7 @@ const DeliveryModule = {
   },
 
   // =========================================================
-  // SCHEDULED (OUTWARD VS INWARD), COMPLETED & REPORTED LISTS
+  // CLEAN SINGLE-LINE CARD LISTS: SCHEDULED, COMPLETED & REPORTED
   // =========================================================
   urgencyWeight(u) {
     if (u === "Very Urgent") return 3;
@@ -1276,6 +1309,9 @@ const DeliveryModule = {
     return 1;
   },
 
+  // SCHEDULED TAB:
+  // Row 1: Task Type, Office Name, Section
+  // Row 2+: {Serial}, {File No.} - {Description} (1 line per file/doc, trimmed)
   renderActiveTasks() {
     const allPending = AppStore.deliveries.filter(t => {
       if (this.isCompletedLifecycle(t)) return false;
@@ -1308,23 +1344,19 @@ const DeliveryModule = {
 
     wrap.innerHTML = active.map(t => {
       const dir = t.Direction || "Outward";
-      const uClass = t.Urgency === "Very Urgent" ? "urg-very" : t.Urgency === "Urgent" ? "urg-urgent" : "urg-normal";
       const cardClass = t.Urgency === "Very Urgent" ? "very-urgent" : t.Urgency === "Urgent" ? "urgent" : "";
 
-      let subline = `${t.Items_Summary || t.Nature}${t.Section ? " • Sec: " + t.Section : ""}`;
       let nextBtnText = "Delivery →";
       let nextStage = 2;
 
       if (dir === "Inward") {
         nextBtnText = "Handover →";
       } else if (dir === "Enquiry") {
-        subline = `Enquirer: <strong>${t.Enquirer_Name}</strong> • ${t.Enquiry_Text}`;
         nextBtnText = "Reply →";
       } else if (dir === "Round-Trip") {
         let stops = [];
         try { stops = JSON.parse(t.RoundTrip_Stops_JSON || "[]"); } catch (e) {}
         const validStops = stops.filter(s => s.office);
-        subline = `${t.Items_Summary || t.Nature} • Given by: <strong>${t.File_Given_By || "—"}</strong>`;
         if (validStops.length && validStops[validStops.length - 1].connectNext === "No") {
           nextBtnText = "Return →";
           nextStage = 3;
@@ -1335,17 +1367,13 @@ const DeliveryModule = {
 
       return `
         <div class="history-item ${cardClass}">
-          <div class="row-between">
-            <div>
+          <div class="card-line">
+            <div class="card-line-text">
               ${this.getDirectionBadgeHTML(t)}
-              <strong style="margin-left:4px;">${t.Office_Name}</strong>
+              <strong style="margin-left:4px;">${t.Office_Name}</strong>${t.Section ? ` <span class="muted small">• ${t.Section}</span>` : ""}
             </div>
-            <span class="urgency-badge ${uClass}">${t.Urgency}</span>
           </div>
-          <div class="small mt-6">${subline}</div>
-          ${t.Description ? `<div class="small muted mt-6">${t.Description}</div>` : ""}
-          <div class="small muted mt-6">${DateTimeHelper.formatShort(t.Created_DateTime)}</div>
-          ${t.Delivery_Status === "Not Delivered" ? `<div class="exception-pill">Not Delivered: ${t.Not_Delivered_Reason}</div>` : ""}
+          ${this.buildItemLinesHTML(t)}
           <div class="row-between mt-8">
             <button type="button" class="btn-mini" data-load-dtask="${t.Task_ID}" data-dopen-stage="1">Edit</button>
             <button type="button" class="btn-mini accent" data-load-dtask="${t.Task_ID}" data-dopen-stage="${nextStage}">${nextBtnText}</button>
@@ -1354,6 +1382,10 @@ const DeliveryModule = {
     }).join("");
   },
 
+  // COMPLETED TAB:
+  // Row 1: Task Type, Office Name, Section
+  // Row 2+: {Serial}, {File No.} - {Description} (1 line per file/doc, trimmed)
+  // Row 3: Delivery time - Receiver's name
   renderUnreportedTasks() {
     const unrep = AppStore.deliveries.filter(t => {
       const dir = t.Direction || "Outward";
@@ -1374,20 +1406,26 @@ const DeliveryModule = {
       const dir = t.Direction || "Outward";
       const checked = this.selectedUnrepIds.has(t.Task_ID);
       const isEnq = dir === "Enquiry";
+
+      const row3Text = isEnq
+        ? `${DateTimeHelper.formatShort(t.Reply_DateTime) || "—"} - ${t.Respondent_Name || t.Reply_Text || "—"}`
+        : `${DateTimeHelper.formatShort(t.Completed_DateTime) || "—"} - ${t.Stage2_Receiver_Name || "—"}`;
+
       return `
         <div class="history-item ${checked ? "checked" : ""}">
-          <div class="row-between">
-            <label class="row-gap" style="margin:0; cursor:pointer; flex:1;">
-              ${!isEnq ? `<input type="checkbox" data-unrep-chk="${t.Task_ID}" ${checked ? "checked" : ""} style="width:18px; height:18px;" />` : ""}
+          <div class="card-line">
+            <label class="card-line-text" style="display:flex; align-items:center; gap:6px; margin:0; cursor:pointer;">
+              ${!isEnq ? `<input type="checkbox" data-unrep-chk="${t.Task_ID}" ${checked ? "checked" : ""} style="width:16px; height:16px; flex-shrink:0;" />` : ""}
               ${this.getDirectionBadgeHTML(t)}
-              <strong>${t.Office_Name}</strong>
+              <strong>${t.Office_Name}</strong>${t.Section ? ` <span class="muted small">• ${t.Section}</span>` : ""}
             </label>
-            <button type="button" class="btn-mini accent" data-load-dtask="${t.Task_ID}" data-dopen-stage="3">Reporting →</button>
+            <div class="card-line-actions">
+              <button type="button" class="btn-mini accent" data-load-dtask="${t.Task_ID}" data-dopen-stage="3">Reporting →</button>
+            </div>
           </div>
-          <div class="small mt-6">
-            ${isEnq
-              ? `Enquirer: <strong>${t.Enquirer_Name}</strong> • Reply${t.Respondent_Name ? " (" + t.Respondent_Name + ")" : ""}: ${t.Reply_Text}`
-              : `${t.Items_Summary || t.Nature}${t.Stage2_Receiver_Name ? ` • Received by: <strong>${t.Stage2_Receiver_Name}</strong>` : ""}`}
+          ${this.buildItemLinesHTML(t)}
+          <div class="card-line small muted">
+            <span class="card-line-text">${row3Text}</span>
           </div>
         </div>`;
     }).join("");
@@ -1397,6 +1435,11 @@ const DeliveryModule = {
     return DateTimeHelper.timestampMs(t.Reported_DateTime || t.Completed_DateTime || t.Reply_DateTime || t.Created_DateTime, t.Task_ID);
   },
 
+  // REPORTED TAB:
+  // Row 1: Task Type, Office Name, Section (+ View button)
+  // Row 2+: {Serial}, {File No.} - {Description} (1 line per file/doc, trimmed)
+  // Row 3: Delivery time - Receiver's name
+  // Row 4: Date & time of receipt - Received by
   renderHistory() {
     const completed = AppStore.deliveries.filter(t => this.isCompletedLifecycle(t));
 
@@ -1463,38 +1506,49 @@ const DeliveryModule = {
     wrap.innerHTML = list.map(t => {
       const dir = t.Direction || "Outward";
       const isNil = this.isNilCollection(t);
-      let summaryLine = isNil
-        ? `No documents pending${t.Section ? " • Checked: " + t.Section : ""}${t.Description ? " • " + t.Description : ""}`
-        : `${t.Items_Summary || t.Nature}${t.Section ? " • " + t.Section : ""}`;
-      let metaLine = "";
 
-      if (dir === "Enquiry") {
-        summaryLine = `Enquirer: <strong>${t.Enquirer_Name}</strong> • ${t.Enquiry_Text}`;
-        metaLine = `Reply${t.Respondent_Name ? " by <strong>" + t.Respondent_Name + "</strong>" : ""}: ${t.Reply_Text} • Reported via <strong>${t.Report_Method || "Direct"}</strong> (${DateTimeHelper.formatShort(t.Reported_DateTime)})`;
-      } else if (dir === "Round-Trip") {
-        let stops = [];
-        try { stops = JSON.parse(t.RoundTrip_Stops_JSON || "[]"); } catch (e) {}
-        const route = stops.filter(s => s.office).map(s => s.office).join(" → ");
-        metaLine = `Route: ${route || t.Office_Name} • Received by: <strong>${t.Stage2_Receiver_Name || "—"}</strong> (${DateTimeHelper.formatShort(t.Reported_DateTime)})`;
-      } else if (isNil) {
-        metaLine = `Duty Visit Logged: <strong>${DateTimeHelper.formatShort(t.Created_DateTime)}</strong>`;
+      let row3Text = "";
+      let row4Text = "";
+
+      if (isNil) {
+        row3Text = `${DateTimeHelper.formatShort(t.Created_DateTime) || "—"} - Nil Visit`;
       } else if (dir === "Inward") {
-        metaLine = `Collected: ${DateTimeHelper.formatShort(t.Created_DateTime)} • Handed over: ${DateTimeHelper.formatShort(t.Completed_DateTime)} → <strong>${t.Stage2_Receiver_Name || "—"}</strong>`;
+        row3Text = `${DateTimeHelper.formatShort(t.Completed_DateTime) || "—"} - ${t.Stage2_Receiver_Name || "—"}`;
+      } else if (dir === "Enquiry") {
+        row3Text = `${DateTimeHelper.formatShort(t.Reply_DateTime) || "—"} - ${t.Respondent_Name || "—"}`;
+        row4Text = `${DateTimeHelper.formatShort(t.Reported_DateTime) || "—"} - ${t.Enquirer_Name || "—"}${t.Report_Method ? " (" + t.Report_Method + ")" : ""}`;
+      } else if (dir === "Round-Trip") {
+        row3Text = `${DateTimeHelper.formatShort(t.Reported_DateTime) || "—"} - ${t.Stage2_Receiver_Name || "—"}`;
+        row4Text = t.Receipt_Given === "Yes"
+          ? `${DateTimeHelper.formatShort(t.Reported_DateTime) || "—"} - ${t.Receiver_Name || "—"}`
+          : `No Receipt${t.Receipt_No_Reason ? " - " + t.Receipt_No_Reason : ""}`;
       } else {
-        metaLine = `Delivered: ${DateTimeHelper.formatShort(t.Completed_DateTime)}${t.Stage2_Receiver_Name ? ` → <strong>${t.Stage2_Receiver_Name}</strong>` : ""}${t.Receiver_Name ? ` • Receipt to: <strong>${t.Receiver_Name}</strong>` : ""}`;
+        // Outward Delivery
+        row3Text = `${DateTimeHelper.formatShort(t.Completed_DateTime) || "—"} - ${t.Stage2_Receiver_Name || "—"}`;
+        row4Text = t.Receipt_Given === "Yes"
+          ? `${DateTimeHelper.formatShort(t.Reported_DateTime) || "—"} - ${t.Receiver_Name || "—"}`
+          : `No Receipt${t.Receipt_No_Reason ? " - " + t.Receipt_No_Reason : ""}`;
       }
 
       return `
         <div class="history-item">
-          <div class="row-between">
-            <div>
+          <div class="card-line">
+            <div class="card-line-text">
               ${this.getDirectionBadgeHTML(t)}
-              <strong style="margin-left:4px;">${t.Office_Name}</strong>
+              <strong style="margin-left:4px;">${t.Office_Name}</strong>${t.Section ? ` <span class="muted small">• ${t.Section}</span>` : ""}
             </div>
-            <button type="button" class="btn-mini accent" data-inspect-dtask="${t.Task_ID}">View</button>
+            <div class="card-line-actions">
+              <button type="button" class="btn-mini accent" data-inspect-dtask="${t.Task_ID}">View</button>
+            </div>
           </div>
-          <div class="small mt-6">${summaryLine}</div>
-          <div class="small muted mt-6">${metaLine}</div>
+          ${this.buildItemLinesHTML(t)}
+          <div class="card-line small muted">
+            <span class="card-line-text">${row3Text}</span>
+          </div>
+          ${row4Text ? `
+            <div class="card-line small muted">
+              <span class="card-line-text">${row4Text}</span>
+            </div>` : ""}
         </div>`;
     }).join("");
   },
@@ -1805,7 +1859,6 @@ const DeliveryModule = {
     document.getElementById("btnSaveDStage2").addEventListener("click", () => this.saveStage2());
     document.getElementById("btnSaveDStage3").addEventListener("click", () => this.saveStage3());
 
-    // Scheduled Outward / Inward Toggle
     document.querySelectorAll("#dScheduledDirTabs button").forEach(btn => {
       btn.addEventListener("click", () => {
         this.setToggle("dScheduledDirTabs", btn.dataset.durg);
