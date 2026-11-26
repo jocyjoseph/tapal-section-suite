@@ -345,3 +345,158 @@ input[type="text"], input[type="number"], input[type="datetime-local"], input[ty
   align-items: center;
   gap: 6px;
 }
+
+/* ========================================================= */
+/* v17 UI REFINEMENTS: FOCUS-REVEAL CHIPS, URGENCY & REPORT  */
+/* ========================================================= */
+
+/* 1. Focus-Reveal Suggestion Chips (Hidden at rest; shown while typing in that field) */
+.form-group .chip-wrap {
+  display: none;
+  margin-top: 6px;
+  margin-bottom: 0;
+}
+
+.form-group:focus-within .chip-wrap {
+  display: flex;
+}
+
+/* 2. Individual File Number & Description Card */
+.file-item-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px;
+  margin-bottom: 8px;
+}
+
+.file-item-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+/* 3. High-Contrast Outward / Inward Segmented Switcher in Scheduled */
+#dScheduledDirTabs {
+  background: #e2e8f0;
+  padding: 3px;
+  border-radius: 8px;
+  gap: 4px;
+}
+
+#dScheduledDirTabs button {
+  background: transparent;
+  border: none;
+  color: #475569;
+  font-weight: 600;
+  border-radius: 6px;
+  padding: 7px 10px;
+}
+
+#dScheduledDirTabs button.selected {
+  background: #0f4c81;
+  color: #ffffff;
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(15, 76, 129, 0.3);
+}
+
+/* 4. Urgency Color Coding on Scheduled Cards */
+.history-item.very-urgent {
+  border-left: 4px solid #dc2626;
+  background: #fef2f2;
+}
+
+.history-item.urgent {
+  border-left: 4px solid #d97706;
+  background: #fffbeb;
+}
+
+.urg-pill-very {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.urg-pill-urgent {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #fef3c7;
+  color: #b45309;
+}
+
+/* 5. Structured 3-Section Task Detailed Report */
+.report-hero {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+
+.report-hero-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: #0f172a;
+  margin-top: 6px;
+}
+
+.report-section {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  background: #ffffff;
+}
+
+.report-section-title {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #0f4c81;
+  margin-bottom: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.report-item-line {
+  font-size: 13px;
+  color: #1e293b;
+  padding: 3px 0;
+}
+
+.report-kv {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12.5px;
+  padding: 3px 0;
+}
+
+.report-kv-lbl {
+  color: #64748b;
+  flex-shrink: 0;
+}
+
+.report-kv-val {
+  color: #0f172a;
+  font-weight: 600;
+  text-align: right;
+}
+
+.report-note-box {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  color: #78350f;
+}
