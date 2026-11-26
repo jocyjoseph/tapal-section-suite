@@ -28,6 +28,10 @@ const DeliveryModule = {
     if (subName === "history") this.renderHistory();
   },
 
+  isNilCollection(t) {
+    return (t.Direction || "Outward") === "Inward" && (t.Nature === "Nil Visit" || Number(t.Item_Count) === 0);
+  },
+
   isCompletedLifecycle(t) {
     const dir = t.Direction || "Outward";
     if (dir === "Inward") {
@@ -42,9 +46,14 @@ const DeliveryModule = {
     return t.Delivery_Status === "Delivered" && Boolean(t.Receipt_Given);
   },
 
-  getDirectionBadgeHTML(dir) {
-    const d = dir || "Outward";
-    if (d === "Inward") return `<span class="badge" style="background:#ccfbf1; color:#0f766e;">📥 Collection</span>`;
+  getDirectionBadgeHTML(t) {
+    const d = t.Direction || "Outward";
+    if (d === "Inward") {
+      if (this.isNilCollection(t)) {
+        return `<span class="badge" style="background:#f1f5f9; color:#334155; border:1px solid #cbd5e1;">📥 Nil Visit</span>`;
+      }
+      return `<span class="badge" style="background:#ccfbf1; color:#0f766e;">📥 Collection</span>`;
+    }
     if (d === "Enquiry") return `<span class="badge" style="background:#fef3c7; color:#92400e;">🔍 Enquiry</span>`;
     if (d === "Round-Trip") return `<span class="badge" style="background:#ede9fe; color:#5b21b6;">🔄 Round-Trip</span>`;
     return `<span class="badge primary">📤 Delivery</span>`;
@@ -73,6 +82,9 @@ const DeliveryModule = {
       ? `${dirTitles[dir]}: ${this.currentTask.Office_Name || "Task"}`
       : `New ${dirTitles[dir]}`;
 
+    // Collection Result Toggle ("Documents Collected" vs "Nil / No Documents")
+    document.getElementById("dCollectionModeGroup").classList.toggle("hidden", !isInward);
+
     // Stage 1 layout & labels
     document.getElementById("dEnquiryStage1Wrap").classList.toggle("hidden", !isEnquiry);
     document.getElementById("dDocumentStage1Wrap").classList.toggle("hidden", isEnquiry);
@@ -81,12 +93,16 @@ const DeliveryModule = {
       document.getElementById("dStage1Tag").textContent = "STAGE 1 • ENQUIRY DETAILS";
       document.getElementById("lblDCreatedDT").textContent = "1. Date & Time";
       document.getElementById("lblDUrgency").textContent = "5. Urgency Scale";
+      document.getElementById("dUrgencyFieldGroup").classList.remove("hidden");
+      document.getElementById("btnSaveDStage1").textContent = "Save Stage 1 & Add to Tasks";
     } else if (isRoundTrip) {
       document.getElementById("dStage1Tag").textContent = "STAGE 1 • FILE PREPARATION";
       document.getElementById("lblDCreatedDT").textContent = "1. Date & Time";
       document.getElementById("dRtFileGivenByGroup").classList.remove("hidden");
       document.getElementById("dOfficeNameGroup").classList.add("hidden");
       document.getElementById("dDesignationGroup").classList.add("hidden");
+      document.getElementById("dNilVisitRemarksGroup").classList.add("hidden");
+      document.getElementById("dFileItemsSectionWrap").classList.remove("hidden");
       document.getElementById("lblDSection").textContent = "3. Section";
       document.getElementById("lblDNature").textContent = "4. Nature of File / Document";
       document.getElementById("lblDItemCount").textContent = "5. No. of File / Document";
@@ -94,29 +110,20 @@ const DeliveryModule = {
       document.getElementById("lblDDescription").innerHTML = `7. Description <span class="muted small">(Optional)</span>`;
       document.getElementById("lblDAttachments").textContent = "8. Attachments?";
       document.getElementById("dPlannedDTGroup").classList.add("hidden");
+      document.getElementById("dUrgencyFieldGroup").classList.remove("hidden");
       document.getElementById("lblDUrgency").textContent = "9. Urgency Scale";
+      document.getElementById("btnSaveDStage1").textContent = "Save Stage 1 & Add to Tasks";
     } else if (isInward) {
-      document.getElementById("dStage1Tag").textContent = "STAGE 1 • COLLECTION DETAILS";
-      document.getElementById("lblDCreatedDT").textContent = "1. Collection Date & Time";
-      document.getElementById("dRtFileGivenByGroup").classList.add("hidden");
-      document.getElementById("dOfficeNameGroup").classList.remove("hidden");
-      document.getElementById("dDesignationGroup").classList.remove("hidden");
-      document.getElementById("lblDOfficeName").textContent = "2. From Office Name";
-      document.getElementById("lblDDesignation").textContent = "3. Designation";
-      document.getElementById("lblDSection").textContent = "4. Receiving Section (Our Office)";
-      document.getElementById("lblDNature").textContent = "5. Nature of File / Document";
-      document.getElementById("lblDItemCount").textContent = "6. No. of File / Document";
-      document.getElementById("lblDItemNumbers").textContent = "7. File Number";
-      document.getElementById("lblDDescription").innerHTML = `8. Description <span class="muted small">(Optional)</span>`;
-      document.getElementById("lblDAttachments").textContent = "9. Attachments?";
-      document.getElementById("dPlannedDTGroup").classList.add("hidden");
-      document.getElementById("lblDUrgency").textContent = "10. Urgency Scale";
+      const colMode = this.getToggle("dCollectionResultToggle") || "Docs";
+      this.applyCollectionResultUI(colMode);
     } else {
       document.getElementById("dStage1Tag").textContent = "STAGE 1 • DELIVERY DETAILS";
       document.getElementById("lblDCreatedDT").textContent = "1. Date & Time";
       document.getElementById("dRtFileGivenByGroup").classList.add("hidden");
       document.getElementById("dOfficeNameGroup").classList.remove("hidden");
       document.getElementById("dDesignationGroup").classList.remove("hidden");
+      document.getElementById("dNilVisitRemarksGroup").classList.add("hidden");
+      document.getElementById("dFileItemsSectionWrap").classList.remove("hidden");
       document.getElementById("lblDOfficeName").textContent = "2. To Office Name";
       document.getElementById("lblDDesignation").textContent = "3. Designation";
       document.getElementById("lblDSection").textContent = "4. Section";
@@ -126,10 +133,14 @@ const DeliveryModule = {
       document.getElementById("lblDDescription").innerHTML = `8. Description <span class="muted small">(Optional)</span>`;
       document.getElementById("lblDAttachments").textContent = "9. Attachments?";
       document.getElementById("dPlannedDTGroup").classList.remove("hidden");
+      document.getElementById("dUrgencyFieldGroup").classList.remove("hidden");
       document.getElementById("lblDUrgency").textContent = "11. Urgency Scale";
+      document.getElementById("btnSaveDStage1").textContent = "Save Stage 1 & Add to Tasks";
     }
 
     // Stage 2 layout & labels
+    const isNilCol = isInward && (this.getToggle("dCollectionResultToggle") === "Nil");
+    document.getElementById("dCard2").classList.toggle("hidden", isNilCol);
     document.getElementById("dStage2StandardWrap").classList.toggle("hidden", isEnquiry || isRoundTrip);
     document.getElementById("dStage2EnquiryWrap").classList.toggle("hidden", !isEnquiry);
     document.getElementById("dStage2RoundTripWrap").classList.toggle("hidden", !isRoundTrip);
@@ -154,7 +165,7 @@ const DeliveryModule = {
       document.getElementById("btnSaveDStage2").textContent = "Save Stage 2";
     }
 
-    // Stage 3 layout & labels (Shown for Outward Delivery, Enquiry, and Round-Trip; Hidden only for Collection)
+    // Stage 3 layout & labels
     document.getElementById("dCard3").classList.toggle("hidden", isInward);
     document.getElementById("dStage3OutwardWrap").classList.toggle("hidden", !isOutward);
     document.getElementById("dStage3EnquiryWrap").classList.toggle("hidden", !isEnquiry);
@@ -172,6 +183,46 @@ const DeliveryModule = {
     }
   },
 
+  applyCollectionResultUI(mode) {
+    const isNil = mode === "Nil";
+    this.setToggle("dCollectionResultToggle", mode);
+
+    document.getElementById("dRtFileGivenByGroup").classList.add("hidden");
+    document.getElementById("dOfficeNameGroup").classList.remove("hidden");
+    document.getElementById("dPlannedDTGroup").classList.add("hidden");
+
+    if (isNil) {
+      document.getElementById("dStage1Tag").textContent = "DUTY VISIT LOG • NIL COLLECTION";
+      document.getElementById("lblDCreatedDT").textContent = "1. Date & Time of Visit";
+      document.getElementById("lblDOfficeName").textContent = "2. Office Visited";
+      document.getElementById("dDesignationGroup").classList.add("hidden");
+      document.getElementById("lblDSection").innerHTML = `3. Section / Counter Checked <span class="muted small">(Optional)</span>`;
+      document.getElementById("dNilVisitRemarksGroup").classList.remove("hidden");
+      document.getElementById("dFileItemsSectionWrap").classList.add("hidden");
+      document.getElementById("dUrgencyFieldGroup").classList.add("hidden");
+      document.getElementById("dCard2").classList.add("hidden");
+      document.getElementById("btnSaveDStage1").textContent = "Save Nil Visit & Log to History";
+    } else {
+      document.getElementById("dStage1Tag").textContent = "STAGE 1 • COLLECTION DETAILS";
+      document.getElementById("lblDCreatedDT").textContent = "1. Collection Date & Time";
+      document.getElementById("lblDOfficeName").textContent = "2. From Office Name";
+      document.getElementById("dDesignationGroup").classList.remove("hidden");
+      document.getElementById("lblDDesignation").textContent = "3. Designation";
+      document.getElementById("lblDSection").textContent = "4. Receiving Section (Our Office)";
+      document.getElementById("dNilVisitRemarksGroup").classList.add("hidden");
+      document.getElementById("dFileItemsSectionWrap").classList.remove("hidden");
+      document.getElementById("lblDNature").textContent = "5. Nature of File / Document";
+      document.getElementById("lblDItemCount").textContent = "6. No. of File / Document";
+      document.getElementById("lblDItemNumbers").textContent = "7. File Number";
+      document.getElementById("lblDDescription").innerHTML = `8. Description <span class="muted small">(Optional)</span>`;
+      document.getElementById("lblDAttachments").textContent = "9. Attachments?";
+      document.getElementById("dUrgencyFieldGroup").classList.remove("hidden");
+      document.getElementById("lblDUrgency").textContent = "10. Urgency Scale";
+      document.getElementById("dCard2").classList.remove("hidden");
+      document.getElementById("btnSaveDStage1").textContent = "Save Stage 1 & Add to Tasks";
+    }
+  },
+
   // =========================================================
   // STAGE ACCORDIONS & TASK STATE
   // =========================================================
@@ -179,6 +230,7 @@ const DeliveryModule = {
     this.batchReportIds = [];
     document.getElementById("dBatchReportBanner").classList.add("hidden");
     this.natureMode = "Same";
+    this.setToggle("dCollectionResultToggle", "Docs");
 
     this.currentTask = {
       Task_ID: "TASK-" + Date.now(),
@@ -310,6 +362,10 @@ const DeliveryModule = {
 
   populateForm(t) {
     const dir = t.Direction || "Outward";
+    const isNil = this.isNilCollection(t);
+    if (dir === "Inward") {
+      this.setToggle("dCollectionResultToggle", isNil ? "Nil" : "Docs");
+    }
     this.applyDirectionUI(dir);
 
     document.getElementById("dCreatedDT").value = DateTimeHelper.toDateTimeLocalValue(t.Created_DateTime);
@@ -329,9 +385,10 @@ const DeliveryModule = {
     document.getElementById("dOfficeName").value = t.Office_Name || "";
     document.getElementById("dDesignation").value = t.Designation || "";
     document.getElementById("dSection").value = t.Section || "";
-    document.getElementById("dNature").value = t.Nature || "File";
-    document.getElementById("dItemCount").value = t.Item_Count || 1;
-    document.getElementById("dDescription").value = t.Description || "";
+    document.getElementById("dNilVisitRemarks").value = isNil ? (t.Description || "") : "";
+    document.getElementById("dNature").value = isNil ? "File" : (t.Nature || "File");
+    document.getElementById("dItemCount").value = Math.max(1, t.Item_Count || 1);
+    document.getElementById("dDescription").value = isNil ? "" : (t.Description || "");
 
     let items = [];
     try { items = JSON.parse(t.Items_JSON || "[]"); } catch (e) {}
@@ -646,6 +703,41 @@ const DeliveryModule = {
       if (!this.currentTask.Office_Name) {
         this.currentTask.Office_Name = `From ${givenBy}${this.currentTask.Section ? " (" + this.currentTask.Section + ")" : ""}`;
       }
+    } else if (direction === "Inward" && this.getToggle("dCollectionResultToggle") === "Nil") {
+      // NIL / NO DOCUMENTS DUTY VISIT LOG -> SAVES DIRECTLY TO HISTORY
+      const office = document.getElementById("dOfficeName").value.trim();
+      if (!office) {
+        showToast("Enter Office Visited.");
+        document.getElementById("dOfficeName").focus();
+        return;
+      }
+      const visitDT = document.getElementById("dCreatedDT").value || DateTimeHelper.nowLocalISO();
+      const remarks = document.getElementById("dNilVisitRemarks").value.trim();
+
+      this.currentTask.Office_Name = office;
+      this.currentTask.Designation = "";
+      this.currentTask.Section = document.getElementById("dSection").value.trim();
+      this.currentTask.Nature = "Nil Visit";
+      this.currentTask.Item_Count = 0;
+      this.currentTask.Items_JSON = "[]";
+      this.currentTask.Items_Summary = "Nil (No Documents to Collect)";
+      this.currentTask.Description = remarks;
+      this.currentTask.Has_Attachments = "No";
+      this.currentTask.Attachment_Count = 0;
+      this.currentTask.Attachments_JSON = "[]";
+      this.currentTask.Urgency = "Normal";
+      this.currentTask.Delivery_Status = "Delivered";
+      this.currentTask.Completed_DateTime = visitDT;
+      this.currentTask.Stage2_Receiver_Name = "Nil (No Docs)";
+      this.currentTask.Stage2_Comments = remarks;
+
+      this.upsertLocalTask(this.currentTask);
+      this.updateStageSummaries();
+      await AppStore.pushAction("saveDelivery", this.currentTask);
+      showToast("Nil Visit logged to History ✓");
+      this.collapseAllStages();
+      this.switchSubView("history");
+      return;
     } else {
       const office = document.getElementById("dOfficeName").value.trim();
       if (!office) {
@@ -1073,9 +1165,12 @@ const DeliveryModule = {
 
     // Outward Delivery & Inward Collection
     const s1Done = Boolean(t.Office_Name && t.Created_DateTime);
+    const isNil = this.isNilCollection(t) || (dir === "Inward" && this.getToggle("dCollectionResultToggle") === "Nil");
     document.getElementById("dSummary1").textContent = s1Done
-      ? `${dir === "Inward" ? "From" : "To"} ${t.Office_Name} • ${t.Items_Summary || t.Nature} [${t.Urgency}]`
-      : (dir === "Inward" ? "Collection Details" : "Delivery Details");
+      ? (isNil
+          ? `Visited ${t.Office_Name} • Nil (No Documents) (${DateTimeHelper.formatShort(t.Created_DateTime)})`
+          : `${dir === "Inward" ? "From" : "To"} ${t.Office_Name} • ${t.Items_Summary || t.Nature} [${t.Urgency}]`)
+      : (isNil ? "Record Nil Duty Visit" : (dir === "Inward" ? "Collection Details" : "Delivery Details"));
     document.getElementById("dCard1").classList.toggle("completed", s1Done);
 
     const s2Done = t.Delivery_Status === "Delivered";
@@ -1095,7 +1190,10 @@ const DeliveryModule = {
     const offices = AppStore.rankByFrequency(AppStore.deliveries.map(t => t.Office_Name), CONFIG.DEFAULT_OFFICES);
     const desigs = AppStore.rankByFrequency(AppStore.deliveries.map(t => t.Designation), CONFIG.DEFAULT_DESIGNATIONS);
     const sections = AppStore.rankByFrequency(AppStore.deliveries.map(t => t.Section), CONFIG.DEFAULT_SECTIONS);
-    const natures = AppStore.rankByFrequency(AppStore.deliveries.map(t => t.Nature), CONFIG.DEFAULT_NATURES);
+    const natures = AppStore.rankByFrequency(
+      AppStore.deliveries.map(t => t.Nature).filter(n => n !== "Nil Visit"),
+      CONFIG.DEFAULT_NATURES
+    );
 
     document.getElementById("dOfficeList").innerHTML = offices.map(v => `<option value="${v}">`).join("");
     document.getElementById("dDesigList").innerHTML = desigs.map(v => `<option value="${v}">`).join("");
@@ -1142,7 +1240,9 @@ const DeliveryModule = {
       ...AppStore.deliveries.map(t => t.Enquirer_Name),
       ...AppStore.deliveries.map(t => t.File_Given_By),
       ...AppStore.deliveries.map(t => t.Receiver_Name),
-      ...AppStore.deliveries.filter(t => t.Direction === "Inward" || t.Direction === "Round-Trip").map(t => t.Stage2_Receiver_Name)
+      ...AppStore.deliveries
+        .filter(t => (t.Direction === "Inward" && !this.isNilCollection(t)) || t.Direction === "Round-Trip")
+        .map(t => t.Stage2_Receiver_Name)
     ]).slice(0, 6);
 
     document.getElementById("dEnquirerChips").innerHTML = ourStaff.map(n =>
@@ -1158,7 +1258,6 @@ const DeliveryModule = {
       `<button type="button" class="smart-chip" data-dfill="dRtReceiptReceiverName" data-dval="${n}">${n}</button>`
     ).join("");
 
-    // External Respondents Pool
     const respondents = AppStore.rankByFrequency(AppStore.deliveries.map(t => t.Respondent_Name)).slice(0, 6);
     document.getElementById("dRespondentChips").innerHTML = respondents.map(n =>
       `<button type="button" class="smart-chip" data-dfill="dRespondentName" data-dval="${n}">${n}</button>`
@@ -1254,7 +1353,7 @@ const DeliveryModule = {
         <div class="history-item ${cardClass}">
           <div class="row-between">
             <div>
-              ${this.getDirectionBadgeHTML(dir)}
+              ${this.getDirectionBadgeHTML(t)}
               <strong style="margin-left:4px;">${t.Office_Name}</strong>
             </div>
             <span class="urgency-badge ${uClass}">${t.Urgency}</span>
@@ -1296,7 +1395,7 @@ const DeliveryModule = {
           <div class="row-between">
             <label class="row-gap" style="margin:0; cursor:pointer; flex:1;">
               ${!isEnq ? `<input type="checkbox" data-unrep-chk="${t.Task_ID}" ${checked ? "checked" : ""} style="width:18px; height:18px;" />` : ""}
-              ${this.getDirectionBadgeHTML(dir)}
+              ${this.getDirectionBadgeHTML(t)}
               <strong>${t.Office_Name}</strong>
             </label>
             <button type="button" class="btn-mini accent" data-load-dtask="${t.Task_ID}" data-dopen-stage="3">
@@ -1320,9 +1419,11 @@ const DeliveryModule = {
     const completed = AppStore.deliveries.filter(t => this.isCompletedLifecycle(t));
 
     this.populateSelectFilter("dHistoryFilterOffice", completed.map(t => t.Office_Name), "Office: All");
-    this.populateSelectFilter("dHistoryFilterNature", completed.map(t => t.Nature), "Nature: All");
+    this.populateSelectFilter("dHistoryFilterNature", completed.map(t => t.Nature).filter(n => n !== "Nil Visit"), "Nature: All");
     this.populateSelectFilter("dHistoryFilterDesig", completed.map(t => t.Designation), "Designation: All");
-    const allPeople = completed.flatMap(t => [t.Stage2_Receiver_Name, t.Receiver_Name, t.Enquirer_Name, t.Respondent_Name, t.File_Given_By]).filter(Boolean);
+    const allPeople = completed
+      .flatMap(t => [t.Stage2_Receiver_Name, t.Receiver_Name, t.Enquirer_Name, t.Respondent_Name, t.File_Given_By])
+      .filter(p => p && p !== "Nil (No Docs)");
     this.populateSelectFilter("dHistoryFilterReceiver", allPeople, "Staff / Person: All");
 
     const q = document.getElementById("dHistorySearch").value.trim().toLowerCase();
@@ -1337,7 +1438,14 @@ const DeliveryModule = {
     const dTo = document.getElementById("dHistoryDateTo").value;
 
     let list = [...completed];
-    if (fDir !== "ALL") list = list.filter(t => (t.Direction || "Outward") === fDir);
+    if (fDir === "Inward_Docs") {
+      list = list.filter(t => (t.Direction || "Outward") === "Inward" && !this.isNilCollection(t));
+    } else if (fDir === "Inward_Nil") {
+      list = list.filter(t => this.isNilCollection(t));
+    } else if (fDir !== "ALL") {
+      list = list.filter(t => (t.Direction || "Outward") === fDir);
+    }
+
     if (fStatus === "GIVEN") list = list.filter(t => t.Receipt_Given === "Yes");
     if (fStatus === "NOT_GIVEN") list = list.filter(t => t.Receipt_Given === "No");
     if (fOffice !== "ALL") list = list.filter(t => t.Office_Name === fOffice);
@@ -1372,7 +1480,10 @@ const DeliveryModule = {
 
     wrap.innerHTML = list.map(t => {
       const dir = t.Direction || "Outward";
-      let summaryLine = `${t.Items_Summary || t.Nature}${t.Section ? " • " + t.Section : ""}`;
+      const isNil = this.isNilCollection(t);
+      let summaryLine = isNil
+        ? `No documents pending${t.Section ? " • Checked: " + t.Section : ""}${t.Description ? " • " + t.Description : ""}`
+        : `${t.Items_Summary || t.Nature}${t.Section ? " • " + t.Section : ""}`;
       let metaLine = "";
 
       if (dir === "Enquiry") {
@@ -1383,6 +1494,8 @@ const DeliveryModule = {
         try { stops = JSON.parse(t.RoundTrip_Stops_JSON || "[]"); } catch (e) {}
         const route = stops.filter(s => s.office).map(s => s.office).join(" → ");
         metaLine = `Route: ${route || t.Office_Name} • Received by: <strong>${t.Stage2_Receiver_Name || "—"}</strong> (${DateTimeHelper.formatShort(t.Reported_DateTime)})`;
+      } else if (isNil) {
+        metaLine = `Duty Visit Logged: <strong>${DateTimeHelper.formatShort(t.Created_DateTime)}</strong>`;
       } else if (dir === "Inward") {
         metaLine = `Collected: ${DateTimeHelper.formatShort(t.Created_DateTime)} • Handed over: ${DateTimeHelper.formatShort(t.Completed_DateTime)} → <strong>${t.Stage2_Receiver_Name || "—"}</strong>`;
       } else {
@@ -1393,7 +1506,7 @@ const DeliveryModule = {
         <div class="history-item">
           <div class="row-between">
             <div>
-              ${this.getDirectionBadgeHTML(dir)}
+              ${this.getDirectionBadgeHTML(t)}
               <strong style="margin-left:4px;">${t.Office_Name}</strong>
             </div>
             <button type="button" class="btn-mini accent" data-inspect-dtask="${t.Task_ID}">View</button>
@@ -1420,12 +1533,22 @@ const DeliveryModule = {
     if (!t) return;
     this.inspectingTaskId = taskId;
     const dir = t.Direction || "Outward";
+    const isNil = this.isNilCollection(t);
 
     let atts = [];
     try { atts = JSON.parse(t.Attachments_JSON || "[]"); } catch (e) {}
 
     let rowsHTML = "";
-    if (dir === "Enquiry") {
+    if (isNil) {
+      rowsHTML = `
+        <div class="report-row"><span class="report-lbl">Task Type</span><span class="report-val">📥 Collection — Nil Visit (Duty Log)</span></div>
+        <div class="report-row"><span class="report-lbl">Date & Time of Visit</span><span class="report-val">${DateTimeHelper.formatShort(t.Created_DateTime)}</span></div>
+        <div class="report-row"><span class="report-lbl">Office Visited</span><span class="report-val">${t.Office_Name}</span></div>
+        <div class="report-row"><span class="report-lbl">Section / Counter</span><span class="report-val">${t.Section || "—"}</span></div>
+        <div class="report-row"><span class="report-lbl">Documents Collected</span><span class="report-val">Nil (None pending)</span></div>
+        <div class="report-row"><span class="report-lbl">Visit Remarks</span><span class="report-val">${t.Description || t.Stage2_Comments || "—"}</span></div>
+      `;
+    } else if (dir === "Enquiry") {
       rowsHTML = `
         <div class="report-row"><span class="report-lbl">Task Type</span><span class="report-val">🔍 Enquiry</span></div>
         <div class="report-row"><span class="report-lbl">Date & Time</span><span class="report-val">${DateTimeHelper.formatShort(t.Created_DateTime)}</span></div>
@@ -1541,10 +1664,21 @@ const DeliveryModule = {
       btn.addEventListener("click", () => {
         const dir = btn.dataset.val;
         this.currentTask.Direction = dir;
+        if (dir === "Inward") {
+          this.setToggle("dCollectionResultToggle", "Docs");
+        }
         this.applyDirectionUI(dir);
         this.renderDynamicItems(this.collectDynamicItems());
         this.updateStageSummaries();
         this.refreshLearnedOptions();
+      });
+    });
+
+    // Collection Result Toggle ("Documents Collected" vs "Nil / No Documents")
+    document.querySelectorAll("#dCollectionResultToggle button").forEach(btn => {
+      btn.addEventListener("click", () => {
+        this.applyCollectionResultUI(btn.dataset.val);
+        this.updateStageSummaries();
       });
     });
 
@@ -1605,7 +1739,6 @@ const DeliveryModule = {
           }
           this.renderRoundTripStops(stops);
         } else {
-          // Trim any trailing blank stops after idx and set connectNext = No
           const trimmed = stops.slice(0, idx + 1);
           trimmed[idx].connectNext = "No";
           this.renderRoundTripStops(trimmed);
