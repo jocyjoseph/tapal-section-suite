@@ -1,11 +1,11 @@
 const DeliveryModule = {
   currentTask: null,
   natureMode: "Same",
-  scheduledDirFilter: "OUTWARD",
   selectedUnrepIds: new Set(),
   batchReportIds: [],
   groupReportIds: [],
   inspectingTaskId: null,
+  cancellingTaskId: null,
   allExpanded: false,
   filtersOpen: false,
 
@@ -33,7 +33,12 @@ const DeliveryModule = {
     return (t.Direction || "Outward") === "Inward" && (t.Nature === "Nil Visit" || Number(t.Item_Count) === 0);
   },
 
+  isCancelledTask(t) {
+    return t.Delivery_Status === "Cancelled";
+  },
+
   isCompletedLifecycle(t) {
+    if (this.isCancelledTask(t)) return true;
     const dir = t.Direction || "Outward";
     if (dir === "Inward") {
       return t.Delivery_Status === "Delivered";
@@ -48,6 +53,9 @@ const DeliveryModule = {
   },
 
   getDirectionBadgeHTML(t) {
+    if (this.isCancelledTask(t)) {
+      return `<span class="badge cancelled">✕ Cancelled</span>`;
+    }
     const d = t.Direction || "Outward";
     if (d === "Inward") {
       if (this.isNilCollection(t)) {
@@ -60,7 +68,6 @@ const DeliveryModule = {
     return `<span class="badge primary">📤 Delivery</span>`;
   },
 
-  // Builds Row 2: one strict single-line row per file/doc/enquiry ({Serial}, {File No.} - {Description})
   buildItemLinesHTML(t) {
     const dir = t.Direction || "Outward";
     const legacyDesc = String(t.Description || "").trim();
@@ -98,6 +105,24 @@ const DeliveryModule = {
     }).join("");
   },
 
+  updateAutoLabels() {
+    const pairs = [
+      ["dCreatedDT", "dCreatedDTLabel", "Date & Time"],
+      ["dCompletedDT", "dCompletedDTLabel", "Date & Time"],
+      ["dReplyDT", "dReplyDTLabel", "Reply Time"],
+      ["dReportedDT", "dReportedDTLabel", "Receipt Time"],
+      ["dEnquiryReportedDT", "dEnquiryReportedDTLabel", "Reporting Time"],
+      ["dRtReturnDT", "dRtReturnDTLabel", "Return Time"]
+    ];
+    pairs.forEach(([inpId, lblId, prefix]) => {
+      const inp = document.getElementById(inpId);
+      const lbl = document.getElementById(lblId);
+      if (inp && lbl) {
+        lbl.textContent = `${prefix}: ${inp.value ? DateTimeHelper.formatShort(inp.value) : "Now"}`;
+      }
+    });
+  },
+
   // =========================================================
   // DIRECTION-AWARE UI LABELS & STAGE VISIBILITY
   // =========================================================
@@ -124,54 +149,50 @@ const DeliveryModule = {
     document.getElementById("btnNewDelivery").classList.toggle("hidden", !isExisting);
 
     document.getElementById("dCollectionModeGroup").classList.toggle("hidden", !isInward);
-
     document.getElementById("dEnquiryStage1Wrap").classList.toggle("hidden", !isEnquiry);
     document.getElementById("dDocumentStage1Wrap").classList.toggle("hidden", isEnquiry);
 
     if (isEnquiry) {
       document.getElementById("dTitle1").textContent = "Enquiry";
-      document.getElementById("lblDCreatedDT").textContent = "1. Date & Time";
-      document.getElementById("lblDUrgency").textContent = "5. Urgency Scale";
+      document.getElementById("lblDUrgency").textContent = "4. Urgency Scale";
       document.getElementById("dUrgencyFieldGroup").classList.remove("hidden");
       document.getElementById("btnSaveDStage1").textContent = "Save Enquiry";
     } else if (isRoundTrip) {
       document.getElementById("dTitle1").textContent = "Preparation";
-      document.getElementById("lblDCreatedDT").textContent = "1. Date & Time";
       document.getElementById("dRtFileGivenByGroup").classList.remove("hidden");
       document.getElementById("dOfficeNameGroup").classList.add("hidden");
       document.getElementById("dDesignationGroup").classList.add("hidden");
       document.getElementById("dNilVisitRemarksGroup").classList.add("hidden");
       document.getElementById("dFileItemsSectionWrap").classList.remove("hidden");
-      document.getElementById("lblDSection").textContent = "3. Section";
-      document.getElementById("lblDNature").textContent = "4. Nature of File / Document";
-      document.getElementById("lblDItemCount").textContent = "5. No. of File / Document";
-      document.getElementById("lblDItemNumbers").textContent = "6. File Number & Description";
-      document.getElementById("lblDAttachments").textContent = "7. Attachments?";
+      document.getElementById("lblDSection").textContent = "2. Section";
+      document.getElementById("lblDNature").textContent = "3. Nature of File / Document";
+      document.getElementById("lblDItemCount").textContent = "4. No. of File / Document";
+      document.getElementById("lblDItemNumbers").textContent = "5. File Number & Description";
+      document.getElementById("lblDAttachments").textContent = "6. Attachments?";
       document.getElementById("dPlannedDTGroup").classList.add("hidden");
       document.getElementById("dUrgencyFieldGroup").classList.remove("hidden");
-      document.getElementById("lblDUrgency").textContent = "8. Urgency Scale";
+      document.getElementById("lblDUrgency").textContent = "7. Urgency Scale";
       document.getElementById("btnSaveDStage1").textContent = "Save Preparation";
     } else if (isInward) {
       const colMode = this.getToggle("dCollectionResultToggle") || "Docs";
       this.applyCollectionResultUI(colMode);
     } else {
       document.getElementById("dTitle1").textContent = "Preparation";
-      document.getElementById("lblDCreatedDT").textContent = "1. Date & Time";
       document.getElementById("dRtFileGivenByGroup").classList.add("hidden");
       document.getElementById("dOfficeNameGroup").classList.remove("hidden");
       document.getElementById("dDesignationGroup").classList.remove("hidden");
       document.getElementById("dNilVisitRemarksGroup").classList.add("hidden");
       document.getElementById("dFileItemsSectionWrap").classList.remove("hidden");
-      document.getElementById("lblDOfficeName").textContent = "2. To Office Name";
-      document.getElementById("lblDDesignation").textContent = "3. Designation";
-      document.getElementById("lblDSection").textContent = "4. Section";
-      document.getElementById("lblDNature").textContent = "5. Nature of File / Document";
-      document.getElementById("lblDItemCount").textContent = "6. No. of File / Document";
-      document.getElementById("lblDItemNumbers").textContent = "7. File Number & Description";
-      document.getElementById("lblDAttachments").textContent = "8. Attachments?";
+      document.getElementById("lblDOfficeName").textContent = "1. To Office Name";
+      document.getElementById("lblDDesignation").textContent = "2. Designation";
+      document.getElementById("lblDSection").textContent = "3. Section";
+      document.getElementById("lblDNature").textContent = "4. Nature of File / Document";
+      document.getElementById("lblDItemCount").textContent = "5. No. of File / Document";
+      document.getElementById("lblDItemNumbers").textContent = "6. File Number & Description";
+      document.getElementById("lblDAttachments").textContent = "7. Attachments?";
       document.getElementById("dPlannedDTGroup").classList.remove("hidden");
       document.getElementById("dUrgencyFieldGroup").classList.remove("hidden");
-      document.getElementById("lblDUrgency").textContent = "10. Urgency Scale";
+      document.getElementById("lblDUrgency").textContent = "9. Urgency Scale";
       document.getElementById("btnSaveDStage1").textContent = "Save Preparation";
     }
 
@@ -189,14 +210,12 @@ const DeliveryModule = {
       document.getElementById("btnSaveDStage2").textContent = "Save Movement";
     } else if (isInward) {
       document.getElementById("dTitle2").textContent = "Handover";
-      document.getElementById("lblDCompletedDT").textContent = "3. Handover Date & Time";
-      document.getElementById("lblDStage2Receiver").textContent = "4. Receiver's Name (Our Office Staff)";
+      document.getElementById("lblDStage2Receiver").textContent = "3. Receiver's Name (Our Office Staff)";
       document.getElementById("dStage2ReceiverName").placeholder = "Staff in our office who received the collected file/doc...";
       document.getElementById("btnSaveDStage2").textContent = "Save Handover";
     } else {
       document.getElementById("dTitle2").textContent = "Delivery";
-      document.getElementById("lblDCompletedDT").textContent = "3. Delivery Date & Time";
-      document.getElementById("lblDStage2Receiver").textContent = "4. Receiver's Name (At External Office)";
+      document.getElementById("lblDStage2Receiver").textContent = "3. Receiver's Name (At External Office)";
       document.getElementById("dStage2ReceiverName").placeholder = "Person at external office who accepted the file/doc...";
       document.getElementById("btnSaveDStage2").textContent = "Save Delivery";
     }
@@ -228,10 +247,9 @@ const DeliveryModule = {
 
     if (isNil) {
       document.getElementById("dTitle1").textContent = "Collection";
-      document.getElementById("lblDCreatedDT").textContent = "1. Date & Time of Visit";
-      document.getElementById("lblDOfficeName").textContent = "2. Office Visited";
+      document.getElementById("lblDOfficeName").textContent = "1. Office Visited";
       document.getElementById("dDesignationGroup").classList.add("hidden");
-      document.getElementById("lblDSection").innerHTML = `3. Section / Counter Checked <span class="muted small">(Optional)</span>`;
+      document.getElementById("lblDSection").innerHTML = `2. Section / Counter Checked <span class="muted small">(Optional)</span>`;
       document.getElementById("dNilVisitRemarksGroup").classList.remove("hidden");
       document.getElementById("dFileItemsSectionWrap").classList.add("hidden");
       document.getElementById("dUrgencyFieldGroup").classList.add("hidden");
@@ -239,19 +257,18 @@ const DeliveryModule = {
       document.getElementById("btnSaveDStage1").textContent = "Save Nil Visit";
     } else {
       document.getElementById("dTitle1").textContent = "Collection";
-      document.getElementById("lblDCreatedDT").textContent = "1. Collection Date & Time";
-      document.getElementById("lblDOfficeName").textContent = "2. From Office Name";
+      document.getElementById("lblDOfficeName").textContent = "1. From Office Name";
       document.getElementById("dDesignationGroup").classList.remove("hidden");
-      document.getElementById("lblDDesignation").textContent = "3. Designation";
-      document.getElementById("lblDSection").textContent = "4. Receiving Section (Our Office)";
+      document.getElementById("lblDDesignation").textContent = "2. Designation";
+      document.getElementById("lblDSection").textContent = "3. Receiving Section (Our Office)";
       document.getElementById("dNilVisitRemarksGroup").classList.add("hidden");
       document.getElementById("dFileItemsSectionWrap").classList.remove("hidden");
-      document.getElementById("lblDNature").textContent = "5. Nature of File / Document";
-      document.getElementById("lblDItemCount").textContent = "6. No. of File / Document";
-      document.getElementById("lblDItemNumbers").textContent = "7. File Number & Description";
-      document.getElementById("lblDAttachments").textContent = "8. Attachments?";
+      document.getElementById("lblDNature").textContent = "4. Nature of File / Document";
+      document.getElementById("lblDItemCount").textContent = "5. No. of File / Document";
+      document.getElementById("lblDItemNumbers").textContent = "6. File Number & Description";
+      document.getElementById("lblDAttachments").textContent = "7. Attachments?";
       document.getElementById("dUrgencyFieldGroup").classList.remove("hidden");
-      document.getElementById("lblDUrgency").textContent = "9. Urgency Scale";
+      document.getElementById("lblDUrgency").textContent = "8. Urgency Scale";
       document.getElementById("dCard2").classList.remove("hidden");
       document.getElementById("btnSaveDStage1").textContent = "Save Collection";
     }
@@ -319,6 +336,8 @@ const DeliveryModule = {
     document.getElementById("dBatchReportBanner").classList.add("hidden");
     this.currentTask = AppStore.normalizeDeliveryRow(found);
     this.natureMode = this.currentTask.Nature_Mode || "Same";
+    document.querySelectorAll(".nav-tab").forEach(t => t.classList.toggle("active", t.dataset.tab === "delivery"));
+    document.querySelectorAll(".module-view").forEach(v => v.classList.toggle("hidden", v.id !== "view-delivery"));
     this.switchSubView("entry");
     this.populateForm(this.currentTask);
     this.openStage(stageToOpen);
@@ -334,16 +353,19 @@ const DeliveryModule = {
       const inp = document.getElementById("dCreatedDT");
       if (!inp.value) inp.value = DateTimeHelper.toDateTimeLocalValue(this.currentTask.Created_DateTime) || DateTimeHelper.nowLocalISO();
       inp.max = DateTimeHelper.nowLocalISO();
+      document.getElementById("dCreatedDTWrap").classList.add("hidden");
     }
     if (stageNum === 2) {
       if (dir === "Enquiry") {
         const rInp = document.getElementById("dReplyDT");
         if (!rInp.value) rInp.value = DateTimeHelper.toDateTimeLocalValue(this.currentTask.Reply_DateTime) || DateTimeHelper.nowLocalISO();
         rInp.max = DateTimeHelper.nowLocalISO();
+        document.getElementById("dReplyDTWrap").classList.add("hidden");
       } else if (dir !== "Round-Trip") {
         const inp = document.getElementById("dCompletedDT");
         if (!inp.value) inp.value = DateTimeHelper.toDateTimeLocalValue(this.currentTask.Completed_DateTime) || DateTimeHelper.nowLocalISO();
         inp.max = DateTimeHelper.nowLocalISO();
+        document.getElementById("dCompletedDTWrap").classList.add("hidden");
       }
     }
     if (stageNum === 3) {
@@ -351,16 +373,21 @@ const DeliveryModule = {
         const repInp = document.getElementById("dEnquiryReportedDT");
         if (!repInp.value) repInp.value = DateTimeHelper.toDateTimeLocalValue(this.currentTask.Reported_DateTime) || DateTimeHelper.nowLocalISO();
         repInp.max = DateTimeHelper.nowLocalISO();
+        document.getElementById("dEnquiryReportedDTWrap").classList.add("hidden");
       } else if (dir === "Round-Trip") {
         const rtInp = document.getElementById("dRtReturnDT");
         if (!rtInp.value) rtInp.value = DateTimeHelper.toDateTimeLocalValue(this.currentTask.Reported_DateTime) || DateTimeHelper.nowLocalISO();
         rtInp.max = DateTimeHelper.nowLocalISO();
+        document.getElementById("dRtReturnDTWrap").classList.add("hidden");
       } else {
         const inp = document.getElementById("dReportedDT");
         if (!inp.value) inp.value = DateTimeHelper.toDateTimeLocalValue(this.currentTask.Reported_DateTime) || DateTimeHelper.nowLocalISO();
         inp.max = DateTimeHelper.nowLocalISO();
+        document.getElementById("dReportedDTWrap").classList.add("hidden");
       }
     }
+
+    this.updateAutoLabels();
 
     [1, 2, 3].forEach(n => {
       const open = n === stageNum;
@@ -387,6 +414,7 @@ const DeliveryModule = {
         if (inp && !inp.value) inp.value = DateTimeHelper.nowLocalISO();
         if (inp) inp.max = DateTimeHelper.nowLocalISO();
       });
+      this.updateAutoLabels();
     }
     [1, 2, 3].forEach(n => {
       document.getElementById(`dBody${n}`).classList.toggle("collapsed", !this.allExpanded);
@@ -423,7 +451,6 @@ const DeliveryModule = {
 
     let items = [];
     try { items = JSON.parse(t.Items_JSON || "[]"); } catch (e) {}
-    // Backward-compatible hydration of legacy top-level Description into Item #1 if needed
     if (items.length && !items[0].description && t.Description && !isNil) {
       items[0].description = t.Description;
     }
@@ -480,12 +507,13 @@ const DeliveryModule = {
     document.getElementById("dRtReceiptReceiverName").value = t.Receiver_Name || "";
     document.getElementById("dRtComments").value = t.Stage2_Comments || "";
 
+    this.updateAutoLabels();
     this.updateStageSummaries();
     this.refreshLearnedOptions();
   },
 
   // =========================================================
-  // ENQUIRY DYNAMIC QUESTIONS RENDERER
+  // ENQUIRY & ROUND-TRIP RENDERERS
   // =========================================================
   renderDynamicEnquiries(enquiries = []) {
     const list = enquiries.length ? enquiries : [{ question: "" }];
@@ -502,15 +530,10 @@ const DeliveryModule = {
   collectDynamicEnquiries() {
     const rows = document.querySelectorAll("#dDynamicEnquiriesWrap .d-enquiry-q");
     const list = [];
-    rows.forEach(ta => {
-      list.push({ question: ta.value.trim() });
-    });
+    rows.forEach(ta => list.push({ question: ta.value.trim() }));
     return list;
   },
 
-  // =========================================================
-  // ROUND-TRIP RECURSIVE OFFICE DETAILS CHAIN
-  // =========================================================
   renderRoundTripStops(stops = []) {
     const list = stops.length ? stops : [{ office: "", designation: "", section: "", action: "", dt: DateTimeHelper.nowLocalISO(), connectNext: "No" }];
     const wrap = document.getElementById("dRoundTripStopsList");
@@ -582,16 +605,13 @@ const DeliveryModule = {
     return stops;
   },
 
-  // =========================================================
-  // DYNAMIC ITEM & INDIVIDUAL DESCRIPTION SCHEMAS
-  // =========================================================
   renderDynamicItems(existingItems = []) {
     const nature = document.getElementById("dNature").value.trim() || "File";
     const count = Math.max(1, Math.min(30, parseInt(document.getElementById("dItemCount").value || "1", 10)));
     const isRt = (this.currentTask && this.currentTask.Direction === "Round-Trip");
 
-    document.getElementById("lblDItemCount").textContent = `${isRt ? "5" : "6"}. No. of ${nature}`;
-    document.getElementById("lblDItemNumbers").textContent = `${isRt ? "6" : "7"}. ${count > 1 ? nature + " Numbers & Descriptions" : nature + " Number & Description"}`;
+    document.getElementById("lblDItemCount").textContent = `${isRt ? "4" : "5"}. No. of ${nature}`;
+    document.getElementById("lblDItemNumbers").textContent = `${isRt ? "5" : "6"}. ${count > 1 ? nature + " Numbers & Descriptions" : nature + " Number & Description"}`;
 
     const modeWrap = document.getElementById("dSameVariousWrap");
     modeWrap.classList.toggle("hidden", count <= 1);
@@ -679,7 +699,7 @@ const DeliveryModule = {
   },
 
   // =========================================================
-  // SAVE STAGES 1, 2 & 3 ACROSS ALL 4 MODES
+  // SAVE STAGES 1, 2 & 3
   // =========================================================
   async saveStage1() {
     const direction = this.getToggle("dDirectionGroup") || "Outward";
@@ -803,8 +823,15 @@ const DeliveryModule = {
     this.upsertLocalTask(this.currentTask);
     this.updateStageSummaries();
     await AppStore.pushAction("saveDelivery", this.currentTask);
-    showToast("Saved to Scheduled ✓");
-    this.collapseAllStages();
+
+    if (direction === "Inward") {
+      showToast("Collection saved — moved to Completed ✓");
+      this.collapseAllStages();
+      this.switchSubView("unreported");
+    } else {
+      showToast("Saved to Scheduled ✓");
+      this.collapseAllStages();
+    }
   },
 
   async saveStage2() {
@@ -1053,6 +1080,36 @@ const DeliveryModule = {
     const idx = AppStore.deliveries.findIndex(t => String(t.Task_ID) === String(taskObj.Task_ID));
     if (idx !== -1) AppStore.deliveries[idx] = { ...taskObj };
     else AppStore.deliveries.unshift({ ...taskObj });
+  },
+
+  // =========================================================
+  // CANCEL SCHEDULED TASK MODAL
+  // =========================================================
+  openCancelTaskModal(taskId) {
+    const t = AppStore.deliveries.find(x => String(x.Task_ID) === String(taskId));
+    if (!t) return;
+    this.cancellingTaskId = taskId;
+    document.getElementById("cancelTaskSummary").innerHTML = `<strong>${t.Office_Name}</strong> • ${t.Items_Summary || t.Nature}`;
+    document.getElementById("cancelTaskReason").value = "";
+    document.getElementById("cancelTaskModal").classList.remove("hidden");
+  },
+
+  async confirmCancelTask() {
+    if (!this.cancellingTaskId) return;
+    const t = AppStore.deliveries.find(x => String(x.Task_ID) === String(this.cancellingTaskId));
+    if (t) {
+      const reason = document.getElementById("cancelTaskReason").value.trim();
+      t.Delivery_Status = "Cancelled";
+      t.Not_Delivered_Reason = reason || "Cancelled by user";
+      t.Reported_DateTime = DateTimeHelper.nowLocalISO();
+      await AppStore.pushAction("saveDelivery", t);
+      showToast("Task cancelled and moved to Reported");
+    }
+    this.cancellingTaskId = null;
+    document.getElementById("cancelTaskModal").classList.add("hidden");
+    this.renderActiveTasks();
+    this.renderUnreportedTasks();
+    this.renderHistory();
   },
 
   // =========================================================
@@ -1312,7 +1369,7 @@ const DeliveryModule = {
   },
 
   // =========================================================
-  // CLEAN SINGLE-LINE CARD LISTS: SCHEDULED, COMPLETED & REPORTED
+  // UNIFIED SCHEDULED, COMPLETED & REPORTED LISTS
   // =========================================================
   urgencyWeight(u) {
     if (u === "Very Urgent") return 3;
@@ -1320,38 +1377,60 @@ const DeliveryModule = {
     return 1;
   },
 
-  // SCHEDULED TAB (with high-contrast urgency borders & background tints)
+  // SCHEDULED TAB:
+  // Includes Delivery, Enquiry, Round-Trip AND Prepared (unposted) Postage SOMs
+  // (Inward Collections go directly to Completed!)
   renderActiveTasks() {
-    const allPending = AppStore.deliveries.filter(t => {
+    const activeTasks = AppStore.deliveries.filter(t => {
       if (this.isCompletedLifecycle(t)) return false;
       const dir = t.Direction || "Outward";
+      if (dir === "Inward") return false;
       if (dir === "Outward" && t.Delivery_Status === "Delivered" && !t.Receipt_Given) return false;
       if (dir === "Enquiry" && t.Reply_Text && t.Report_Status !== "Reported") return false;
       return true;
     });
 
-    const outwardTasks = allPending.filter(t => (t.Direction || "Outward") === "Outward");
-    const inwardTasks = allPending.filter(t => ["Inward", "Enquiry", "Round-Trip"].includes(t.Direction || "Outward"));
+    const scheduledPostage = (AppStore.batches || []).filter(b =>
+      Number(b.Total_Articles) > 0 && !(b.SOM_Received || b.Receipt_Received || b.Given_To_Tapal === "Yes")
+    );
 
-    document.getElementById("dTasksCount").textContent = allPending.length;
-    document.getElementById("dOutwardTasksCount").textContent = outwardTasks.length;
-    document.getElementById("dInwardTasksCount").textContent = inwardTasks.length;
+    const totalCount = activeTasks.length + scheduledPostage.length;
+    document.getElementById("dTasksCount").textContent = totalCount;
 
-    let active = this.scheduledDirFilter === "INWARD" ? inwardTasks : outwardTasks;
-
-    active.sort((a, b) => {
+    activeTasks.sort((a, b) => {
       const uw = this.urgencyWeight(b.Urgency) - this.urgencyWeight(a.Urgency);
       if (uw !== 0) return uw;
       return String(a.Planned_Delivery_DT || a.Created_DateTime).localeCompare(String(b.Planned_Delivery_DT || b.Created_DateTime));
     });
 
     const wrap = document.getElementById("dActiveTasksList");
-    if (!active.length) {
-      wrap.innerHTML = `<div class="card muted small">No scheduled ${this.scheduledDirFilter === "INWARD" ? "inward" : "outward"} tasks.</div>`;
+    if (!totalCount) {
+      wrap.innerHTML = `<div class="card muted small">No scheduled tasks.</div>`;
       return;
     }
 
-    wrap.innerHTML = active.map(t => {
+    const postageCardsHTML = scheduledPostage.map(b => `
+      <div class="history-item">
+        <div class="card-line">
+          <div class="card-line-text">
+            <span class="badge primary">✉️ Postage</span>
+            <strong style="margin-left:4px;">Post Office</strong> <span class="muted small">• SOM #${b.SOM_Number}</span>
+          </div>
+          <div class="card-line-actions">
+            <button type="button" class="btn-mini accent" data-inspect-pbatch="${b.Batch_ID}">View</button>
+          </div>
+        </div>
+        <div class="card-line small">
+          <span class="card-line-text">1. ${b.Total_Articles} Postage (Speed: ${b.Speed_Posts || 0}, R Parcel: ${b.Registered_Parcels || 0}, Ordinary: ${b.Ordinary_Posts || 0})</span>
+        </div>
+        <div class="row-between mt-8">
+          <button type="button" class="btn-mini" data-load-pbatch="${b.Batch_ID}" data-pstage="1">Edit</button>
+          <button type="button" class="btn-mini accent" data-load-pbatch="${b.Batch_ID}" data-pstage="2">Posting →</button>
+        </div>
+      </div>
+    `).join("");
+
+    const taskCardsHTML = activeTasks.map(t => {
       const dir = t.Direction || "Outward";
       const cardClass = t.Urgency === "Very Urgent" ? "very-urgent" : t.Urgency === "Urgent" ? "urgent" : "";
       const urgPill = t.Urgency === "Very Urgent"
@@ -1363,9 +1442,7 @@ const DeliveryModule = {
       let nextBtnText = "Delivery →";
       let nextStage = 2;
 
-      if (dir === "Inward") {
-        nextBtnText = "Handover →";
-      } else if (dir === "Enquiry") {
+      if (dir === "Enquiry") {
         nextBtnText = "Reply →";
       } else if (dir === "Round-Trip") {
         let stops = [];
@@ -1386,61 +1463,116 @@ const DeliveryModule = {
               ${this.getDirectionBadgeHTML(t)}
               <strong style="margin-left:4px;">${t.Office_Name}</strong>${t.Section ? ` <span class="muted small">• ${t.Section}</span>` : ""}
             </div>
-            ${urgPill ? `<div class="card-line-actions">${urgPill}</div>` : ""}
+            <div class="card-line-actions">
+              ${urgPill}
+              <button type="button" class="btn-mini accent" data-inspect-dtask="${t.Task_ID}">View</button>
+            </div>
           </div>
           ${this.buildItemLinesHTML(t)}
           <div class="row-between mt-8">
-            <button type="button" class="btn-mini" data-load-dtask="${t.Task_ID}" data-dopen-stage="1">Edit</button>
+            <div class="row-gap">
+              <button type="button" class="btn-mini" data-load-dtask="${t.Task_ID}" data-dopen-stage="1">Edit</button>
+              <button type="button" class="btn-mini" style="color:var(--danger);" data-cancel-dtask="${t.Task_ID}">Cancel</button>
+            </div>
             <button type="button" class="btn-mini accent" data-load-dtask="${t.Task_ID}" data-dopen-stage="${nextStage}">${nextBtnText}</button>
           </div>
         </div>`;
     }).join("");
+
+    wrap.innerHTML = taskCardsHTML + postageCardsHTML;
   },
 
-  // COMPLETED TAB
+  // COMPLETED TAB:
+  // Includes Delivered Outward (awaiting receipt), Collected Inward (awaiting handover),
+  // Replied Enquiries (awaiting reporting), and Posted Postage SOMs (awaiting Tapal reporting)
   renderUnreportedTasks() {
-    const unrep = AppStore.deliveries.filter(t => {
+    const unrepTasks = AppStore.deliveries.filter(t => {
+      if (this.isCancelledTask(t)) return false;
       const dir = t.Direction || "Outward";
       if (dir === "Outward" && t.Delivery_Status === "Delivered" && !t.Receipt_Given) return true;
+      if (dir === "Inward" && !this.isNilCollection(t) && t.Delivery_Status !== "Delivered") return true;
       if (dir === "Enquiry" && t.Reply_Text && t.Report_Status !== "Reported") return true;
       return false;
     });
-    document.getElementById("dUnrepCount").textContent = unrep.length;
+
+    const unrepPostage = (AppStore.batches || []).filter(b =>
+      (b.SOM_Received || b.Receipt_Received) && b.Given_To_Tapal !== "Yes"
+    );
+
+    const totalUnrep = unrepTasks.length + unrepPostage.length;
+    document.getElementById("dUnrepCount").textContent = totalUnrep;
     document.getElementById("dSelectedUnrepCount").textContent = this.selectedUnrepIds.size;
 
+    const batchableTasks = unrepTasks.filter(t => (t.Direction || "Outward") === "Outward");
+    const masterChk = document.getElementById("chkSelectAllUnrep");
+    if (masterChk) {
+      masterChk.checked = batchableTasks.length > 0 && batchableTasks.every(t => this.selectedUnrepIds.has(t.Task_ID));
+    }
+
     const wrap = document.getElementById("dUnreportedTasksList");
-    if (!unrep.length) {
+    if (!totalUnrep) {
       wrap.innerHTML = `<div class="card muted small">No completed tasks awaiting reporting.</div>`;
       return;
     }
 
-    wrap.innerHTML = unrep.map(t => {
+    const taskHTML = unrepTasks.map(t => {
       const dir = t.Direction || "Outward";
       const checked = this.selectedUnrepIds.has(t.Task_ID);
+      const isOutward = dir === "Outward";
+      const isInward = dir === "Inward";
       const isEnq = dir === "Enquiry";
 
-      const row3Text = isEnq
-        ? `${DateTimeHelper.formatShort(t.Reply_DateTime) || "—"} - ${t.Respondent_Name || t.Reply_Text || "—"}`
-        : `${DateTimeHelper.formatShort(t.Completed_DateTime) || "—"} - ${t.Stage2_Receiver_Name || "—"}`;
+      const row3Text = isInward
+        ? `Collected: ${DateTimeHelper.formatShort(t.Created_DateTime) || "—"}`
+        : isEnq
+          ? `${DateTimeHelper.formatShort(t.Reply_DateTime) || "—"} - ${t.Respondent_Name || t.Reply_Text || "—"}`
+          : `${DateTimeHelper.formatShort(t.Completed_DateTime) || "—"} - ${t.Stage2_Receiver_Name || "—"}`;
+
+      const actionLabel = isInward ? "Handover →" : "Reporting →";
+      const targetStage = isInward ? 2 : 3;
 
       return `
         <div class="history-item ${checked ? "checked" : ""}">
           <div class="card-line">
             <label class="card-line-text" style="display:flex; align-items:center; gap:6px; margin:0; cursor:pointer;">
-              ${!isEnq ? `<input type="checkbox" data-unrep-chk="${t.Task_ID}" ${checked ? "checked" : ""} style="width:16px; height:16px; flex-shrink:0;" />` : ""}
+              ${isOutward ? `<input type="checkbox" data-unrep-chk="${t.Task_ID}" ${checked ? "checked" : ""} style="width:16px; height:16px; flex-shrink:0;" />` : ""}
               ${this.getDirectionBadgeHTML(t)}
               <strong>${t.Office_Name}</strong>${t.Section ? ` <span class="muted small">• ${t.Section}</span>` : ""}
             </label>
-            <div class="card-line-actions">
-              <button type="button" class="btn-mini accent" data-load-dtask="${t.Task_ID}" data-dopen-stage="3">Reporting →</button>
-            </div>
           </div>
           ${this.buildItemLinesHTML(t)}
           <div class="card-line small muted">
             <span class="card-line-text">${row3Text}</span>
           </div>
+          <div class="row-between mt-8">
+            <button type="button" class="btn-mini" data-load-dtask="${t.Task_ID}" data-dopen-stage="1">Edit</button>
+            <button type="button" class="btn-mini accent" data-load-dtask="${t.Task_ID}" data-dopen-stage="${targetStage}">${actionLabel}</button>
+          </div>
         </div>`;
     }).join("");
+
+    const postageHTML = unrepPostage.map(b => `
+      <div class="history-item">
+        <div class="card-line">
+          <div class="card-line-text">
+            <span class="badge online">✉️ Postage</span>
+            <strong style="margin-left:4px;">Post Office</strong> <span class="muted small">• SOM #${b.SOM_Number}</span>
+          </div>
+        </div>
+        <div class="card-line small">
+          <span class="card-line-text">1. ${b.Total_Articles} Postage (Speed: ${b.Speed_Posts || 0}, R Parcel: ${b.Registered_Parcels || 0}, Ordinary: ${b.Ordinary_Posts || 0})</span>
+        </div>
+        <div class="card-line small muted">
+          <span class="card-line-text">${DateTimeHelper.formatShort(b.Delivered_DateTime || b.Received_DateTime)} - Counter ${b.Counter_Number || "—"}</span>
+        </div>
+        <div class="row-between mt-8">
+          <button type="button" class="btn-mini" data-load-pbatch="${b.Batch_ID}" data-pstage="2">Edit</button>
+          <button type="button" class="btn-mini accent" data-load-pbatch="${b.Batch_ID}" data-pstage="3">Reporting →</button>
+        </div>
+      </div>
+    `).join("");
+
+    wrap.innerHTML = taskHTML + postageHTML;
   },
 
   historyTimestamp(t) {
@@ -1470,7 +1602,6 @@ const DeliveryModule = {
     const dFrom = document.getElementById("dHistoryDateFrom").value;
     const dTo = document.getElementById("dHistoryDateTo").value;
 
-    // Update Filters toggle button badge count
     let activeFilterCount = 0;
     if (fDir !== "ALL") activeFilterCount++;
     if (fStatus !== "ALL") activeFilterCount++;
@@ -1532,11 +1663,14 @@ const DeliveryModule = {
     wrap.innerHTML = list.map(t => {
       const dir = t.Direction || "Outward";
       const isNil = this.isNilCollection(t);
+      const isCancelled = this.isCancelledTask(t);
 
       let row3Text = "";
       let row4Text = "";
 
-      if (isNil) {
+      if (isCancelled) {
+        row3Text = `${DateTimeHelper.formatShort(t.Reported_DateTime || t.Created_DateTime) || "—"} - ${t.Not_Delivered_Reason || "Cancelled"}`;
+      } else if (isNil) {
         row3Text = `${DateTimeHelper.formatShort(t.Created_DateTime) || "—"} - Nil Visit`;
       } else if (dir === "Inward") {
         row3Text = `${DateTimeHelper.formatShort(t.Completed_DateTime) || "—"} - ${t.Stage2_Receiver_Name || "—"}`;
@@ -1587,7 +1721,7 @@ const DeliveryModule = {
   },
 
   // =========================================================
-  // STRUCTURED 3-SECTION TASK DETAILED REPORT MODAL
+  // CUSTOM REPORT CARD DESIGNS (ENQUIRY, NIL VISIT, DELIVERY, COLLECTION, ROUND-TRIP)
   // =========================================================
   openReportModal(taskId) {
     const t = AppStore.deliveries.find(x => String(x.Task_ID) === String(taskId));
@@ -1609,50 +1743,80 @@ const DeliveryModule = {
       const nat = it.nature || t.Nature || "File";
       const num = it.number ? ` #${it.number}` : "";
       const desc = it.description || (idx === 0 ? t.Description : "") || "";
-      return `<div class="report-item-line"><strong>${idx + 1}. ${nat}${num}</strong>${desc ? ` — ${desc}` : ""}</div>`;
+      return `<div class="report-item-line"><strong>${idx + 1}. ${nat}${num}</strong>${desc ? ` - ${desc}` : ""}</div>`;
     }).join("");
 
-    let bodyHTML = `
-      <div class="report-hero">
-        <div class="row-between">
-          ${this.getDirectionBadgeHTML(t)}
-          <span class="small muted">${t.Urgency || "Normal"}</span>
-        </div>
-        <div class="report-hero-title">${t.Office_Name}</div>
-        ${(t.Designation || t.Section) ? `<div class="small muted mt-6">${[t.Designation, t.Section ? "Sec: " + t.Section : ""].filter(Boolean).join(" • ")}</div>` : ""}
-      </div>
-    `;
+    let bodyHTML = "";
 
     if (isNil) {
-      bodyHTML += `
-        <div class="report-section">
-          <div class="report-section-title">Duty Visit Log</div>
-          <div class="report-kv"><span class="report-kv-lbl">Date & Time</span><span class="report-kv-val">${DateTimeHelper.formatShort(t.Created_DateTime)}</span></div>
-          <div class="report-kv"><span class="report-kv-lbl">Collection Result</span><span class="report-kv-val">Nil (No pending documents)</span></div>
+      // Nil visit: office name - Visit time - Comments
+      bodyHTML = `
+        <div class="report-hero">
+          <div class="row-between">
+            ${this.getDirectionBadgeHTML(t)}
+            <span class="small muted">${DateTimeHelper.formatShort(t.Created_DateTime) || "—"}</span>
+          </div>
+          <div class="report-hero-title">${t.Office_Name}</div>
+          ${t.Section ? `<div class="small muted mt-6">Section: ${t.Section}</div>` : ""}
         </div>
-        ${t.Description ? `<div class="report-note-box"><strong>Remarks:</strong> ${t.Description}</div>` : ""}
+        <div class="report-section">
+          <div class="report-section-title">Visit Details</div>
+          <div class="report-item-line">${t.Office_Name} - ${DateTimeHelper.formatShort(t.Created_DateTime) || "—"} - ${t.Description || t.Stage2_Comments || "No comments"}</div>
+        </div>
       `;
     } else if (dir === "Enquiry") {
+      // Enquiry:
+      // Enquiry time - From where?
+      // Date-time of questions - Name of the enquirer - question
+      // Date-time of response - Respondent - Answer
       let enqs = [];
       try { enqs = JSON.parse(t.Enquiries_JSON || "[]"); } catch (e) {}
-      const enqLines = enqs.filter(e => e.question).length
-        ? enqs.filter(e => e.question).map((e, i) => `<div class="report-item-line"><strong>${i + 1}.</strong> ${e.question}</div>`).join("")
-        : `<div class="report-item-line">${t.Enquiry_Text || "—"}</div>`;
+      const validEnqs = enqs.filter(e => e.question);
+      const qLines = validEnqs.length
+        ? validEnqs.map((e, i) => `<div class="report-item-line">${DateTimeHelper.formatShort(t.Created_DateTime) || "—"} - <strong>${t.Enquirer_Name || "—"}</strong> - ${validEnqs.length > 1 ? `(${i + 1}) ` : ""}${e.question}</div>`).join("")
+        : `<div class="report-item-line">${DateTimeHelper.formatShort(t.Created_DateTime) || "—"} - <strong>${t.Enquirer_Name || "—"}</strong> - ${t.Enquiry_Text || "—"}</div>`;
 
-      bodyHTML += `
-        <div class="report-section">
-          <div class="report-section-title">1. Enquiry Details</div>
-          <div class="report-kv"><span class="report-kv-lbl">Enquirer</span><span class="report-kv-val">${t.Enquirer_Name || "—"}</span></div>
-          <div class="report-kv"><span class="report-kv-lbl">Date & Time</span><span class="report-kv-val">${DateTimeHelper.formatShort(t.Created_DateTime)}</span></div>
-          <div class="mt-6">${enqLines}</div>
+      bodyHTML = `
+        <div class="report-hero">
+          <div class="row-between">
+            ${this.getDirectionBadgeHTML(t)}
+            <span class="small muted">${DateTimeHelper.formatShort(t.Created_DateTime) || "—"}</span>
+          </div>
+          <div class="report-hero-title">${t.Office_Name}</div>
         </div>
         <div class="report-section">
-          <div class="report-section-title">2. Reply & Reporting</div>
-          <div class="report-item-line" style="margin-bottom:6px;"><strong>Reply:</strong> ${t.Reply_Text || "—"}</div>
-          <div class="report-kv"><span class="report-kv-lbl">Respondent</span><span class="report-kv-val">${t.Respondent_Name || "—"}</span></div>
-          <div class="report-kv"><span class="report-kv-lbl">Reply Time</span><span class="report-kv-val">${DateTimeHelper.formatShort(t.Reply_DateTime) || "—"}</span></div>
-          <div class="report-kv"><span class="report-kv-lbl">Reported Status</span><span class="report-kv-val">${t.Report_Status || "—"} (${t.Report_Method || "—"})</span></div>
-          <div class="report-kv"><span class="report-kv-lbl">Reported Time</span><span class="report-kv-val">${DateTimeHelper.formatShort(t.Reported_DateTime) || "—"}</span></div>
+          <div class="report-section-title">Question(s)</div>
+          ${qLines}
+        </div>
+        <div class="report-section">
+          <div class="report-section-title">Response & Reporting</div>
+          <div class="report-item-line">${DateTimeHelper.formatShort(t.Reply_DateTime) || "—"} - <strong>${t.Respondent_Name || "—"}</strong> - ${t.Reply_Text || "Pending reply"}</div>
+          ${t.Report_Status === "Reported" ? `<div class="small muted mt-6">Reported: ${DateTimeHelper.formatShort(t.Reported_DateTime) || "—"} (${t.Report_Method || "Direct"})</div>` : ""}
+        </div>
+        ${t.Stage2_Comments ? `<div class="report-note-box"><strong>Comments:</strong> ${t.Stage2_Comments}</div>` : ""}
+      `;
+    } else if (dir === "Inward") {
+      // Collection:
+      // collected office - section - collected date-time
+      // file number - description
+      // received by - received date-time
+      bodyHTML = `
+        <div class="report-hero">
+          <div class="row-between">
+            ${this.getDirectionBadgeHTML(t)}
+            <span class="small muted">${DateTimeHelper.formatShort(t.Created_DateTime) || "—"}</span>
+          </div>
+          <div class="report-hero-title">${t.Office_Name}${t.Section ? ` - ${t.Section}` : ""}</div>
+          <div class="small muted mt-6">Collected: ${DateTimeHelper.formatShort(t.Created_DateTime) || "—"}</div>
+        </div>
+        <div class="report-section">
+          <div class="report-section-title">Collected Items (${t.Item_Count})</div>
+          ${itemsSectionHTML}
+          ${t.Has_Attachments === "Yes" ? `<div class="small muted mt-6"><strong>Attachments:</strong> ${atts.map(a => `${a.nature} ${a.number}`).join(", ")}</div>` : ""}
+        </div>
+        <div class="report-section">
+          <div class="report-section-title">Office Handover</div>
+          <div class="report-item-line"><strong>${t.Stage2_Receiver_Name || "Pending handover"}</strong>${t.Completed_DateTime ? ` - ${DateTimeHelper.formatShort(t.Completed_DateTime)}` : ""}</div>
         </div>
         ${t.Stage2_Comments ? `<div class="report-note-box"><strong>Comments:</strong> ${t.Stage2_Comments}</div>` : ""}
       `;
@@ -1666,46 +1830,55 @@ const DeliveryModule = {
         </div>
       `).join("");
 
-      bodyHTML += `
-        <div class="report-section">
-          <div class="report-section-title">1. File Preparation (${t.Item_Count})</div>
-          <div class="report-kv"><span class="report-kv-lbl">File Given By</span><span class="report-kv-val">${t.File_Given_By || "—"}</span></div>
-          <div class="report-kv"><span class="report-kv-lbl">Prepared Time</span><span class="report-kv-val">${DateTimeHelper.formatShort(t.Created_DateTime)}</span></div>
-          <div class="mt-6">${itemsSectionHTML}</div>
-          ${t.Has_Attachments === "Yes" ? `<div class="small muted mt-6"><strong>Attachments:</strong> ${atts.map(a => `${a.nature} ${a.number}`).join(", ")}</div>` : ""}
+      bodyHTML = `
+        <div class="report-hero">
+          <div class="row-between">
+            ${this.getDirectionBadgeHTML(t)}
+            <span class="small muted">${t.Urgency || "Normal"}</span>
+          </div>
+          <div class="report-hero-title">${t.Office_Name}</div>
+          <div class="small muted mt-6">Given by: ${t.File_Given_By || "—"} • ${DateTimeHelper.formatShort(t.Created_DateTime) || "—"}</div>
         </div>
         <div class="report-section">
-          <div class="report-section-title">2. Office Movement Trail</div>
+          <div class="report-section-title">1. Files (${t.Item_Count})</div>
+          ${itemsSectionHTML}
+        </div>
+        <div class="report-section">
+          <div class="report-section-title">2. Office Movement</div>
           ${stopsLines || "<div class='small muted'>No stops recorded</div>"}
         </div>
         <div class="report-section">
           <div class="report-section-title">3. Return to Office</div>
-          <div class="report-kv"><span class="report-kv-lbl">File/Doc Received By</span><span class="report-kv-val">${t.Stage2_Receiver_Name || "—"}</span></div>
-          <div class="report-kv"><span class="report-kv-lbl">Return Time</span><span class="report-kv-val">${DateTimeHelper.formatShort(t.Reported_DateTime) || "—"}</span></div>
-          <div class="report-kv"><span class="report-kv-lbl">Receipt Received</span><span class="report-kv-val">${t.Receipt_Given || "—"}${t.Receipt_Given === "Yes" && t.Receiver_Name ? " (" + t.Receiver_Name + ")" : ""}${t.Receipt_No_Reason ? " (" + t.Receipt_No_Reason + ")" : ""}</span></div>
+          <div class="report-item-line"><strong>${t.Stage2_Receiver_Name || "Pending"}</strong>${t.Reported_DateTime ? ` - ${DateTimeHelper.formatShort(t.Reported_DateTime)}` : ""}</div>
+          <div class="small muted mt-6">Receipt: ${t.Receipt_Given || "—"}${t.Receipt_Given === "Yes" && t.Receiver_Name ? " (" + t.Receiver_Name + ")" : ""}${t.Receipt_No_Reason ? " (" + t.Receipt_No_Reason + ")" : ""}</div>
         </div>
         ${t.Stage2_Comments ? `<div class="report-note-box"><strong>Comments:</strong> ${t.Stage2_Comments}</div>` : ""}
       `;
     } else {
-      const isInward = dir === "Inward";
-      bodyHTML += `
+      // Delivery:
+      // office - section
+      // file number - description
+      // Delivery date time - receiver
+      bodyHTML = `
+        <div class="report-hero">
+          <div class="row-between">
+            ${this.getDirectionBadgeHTML(t)}
+            <span class="small muted">${t.Urgency || "Normal"}</span>
+          </div>
+          <div class="report-hero-title">${t.Office_Name}${t.Section ? ` - ${t.Section}` : ""}</div>
+          ${t.Designation ? `<div class="small muted mt-6">${t.Designation}</div>` : ""}
+        </div>
         <div class="report-section">
-          <div class="report-section-title">1. Document Details (${t.Item_Count})</div>
+          <div class="report-section-title">Files / Documents (${t.Item_Count})</div>
           ${itemsSectionHTML}
           ${t.Has_Attachments === "Yes" ? `<div class="small muted mt-6"><strong>Attachments:</strong> ${atts.map(a => `${a.nature} ${a.number}`).join(", ")}</div>` : ""}
         </div>
         <div class="report-section">
-          <div class="report-section-title">2. Timeline & Custody</div>
-          <div class="report-kv"><span class="report-kv-lbl">${isInward ? "Collected Time" : "Prepared Time"}</span><span class="report-kv-val">${DateTimeHelper.formatShort(t.Created_DateTime)}</span></div>
-          <div class="report-kv"><span class="report-kv-lbl">${isInward ? "Handover Time" : "Delivered Time"}</span><span class="report-kv-val">${DateTimeHelper.formatShort(t.Completed_DateTime)}</span></div>
-          <div class="report-kv"><span class="report-kv-lbl">Receiver's Name</span><span class="report-kv-val">${t.Stage2_Receiver_Name || "—"}</span></div>
-          ${!isInward ? `
-            <div class="report-kv"><span class="report-kv-lbl">Receipt Status</span><span class="report-kv-val">${t.Receipt_Given}${t.Receipt_No_Reason ? " (" + t.Receipt_No_Reason + ")" : ""}</span></div>
-            <div class="report-kv"><span class="report-kv-lbl">Receipt Receiver</span><span class="report-kv-val">${t.Receiver_Name || "—"}</span></div>
-            <div class="report-kv"><span class="report-kv-lbl">Reported Time</span><span class="report-kv-val">${DateTimeHelper.formatShort(t.Reported_DateTime)}</span></div>
-          ` : ""}
+          <div class="report-section-title">Delivery & Receipt</div>
+          <div class="report-item-line">${DateTimeHelper.formatShort(t.Completed_DateTime) || "Pending delivery"}${t.Stage2_Receiver_Name ? ` - <strong>${t.Stage2_Receiver_Name}</strong>` : ""}</div>
+          ${t.Receipt_Given ? `<div class="small muted mt-6">Receipt: ${t.Receipt_Given === "Yes" ? `${DateTimeHelper.formatShort(t.Reported_DateTime)} - ${t.Receiver_Name}` : `No (${t.Receipt_No_Reason})`}</div>` : ""}
         </div>
-        ${t.Stage2_Comments ? `<div class="report-note-box"><strong>Comments:</strong> ${t.Stage2_Comments}</div>` : ""}
+        ${(t.Stage2_Comments || t.Not_Delivered_Reason) ? `<div class="report-note-box">${[t.Stage2_Comments, t.Not_Delivered_Reason].filter(Boolean).join(" • ")}</div>` : ""}
       `;
     }
 
@@ -1762,6 +1935,11 @@ const DeliveryModule = {
     });
     document.getElementById("btnToggleExpandAllDelivery").addEventListener("click", () => this.toggleExpandAll());
 
+    ["dCreatedDT", "dCompletedDT", "dReportedDT", "dReplyDT", "dEnquiryReportedDT", "dRtReturnDT"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener("change", () => this.updateAutoLabels());
+    });
+
     document.querySelectorAll("#dDirectionGroup button").forEach(btn => {
       btn.addEventListener("click", () => {
         const dir = btn.dataset.val;
@@ -1804,12 +1982,8 @@ const DeliveryModule = {
         document.getElementById("dEnquiryReportedDetails").classList.toggle("hidden", !isRep);
         if (isRep && !document.getElementById("dEnquiryReportedDT").value) {
           document.getElementById("dEnquiryReportedDT").value = DateTimeHelper.nowLocalISO();
+          this.updateAutoLabels();
         }
-      });
-    });
-    document.querySelectorAll("[data-rmethod]").forEach(btn => {
-      btn.addEventListener("click", () => {
-        document.getElementById("dReportMethodInput").value = btn.dataset.rmethod;
       });
     });
 
@@ -1925,15 +2099,6 @@ const DeliveryModule = {
     document.getElementById("btnSaveDStage2").addEventListener("click", () => this.saveStage2());
     document.getElementById("btnSaveDStage3").addEventListener("click", () => this.saveStage3());
 
-    document.querySelectorAll("#dScheduledDirTabs button").forEach(btn => {
-      btn.addEventListener("click", () => {
-        this.setToggle("dScheduledDirTabs", btn.dataset.durg);
-        this.scheduledDirFilter = btn.dataset.durg;
-        this.renderActiveTasks();
-      });
-    });
-
-    // Use mousedown/pointerdown for focus-reveal chips so tapping a chip fills before blur hides it
     document.getElementById("view-delivery").addEventListener("pointerdown", (e) => {
       if (e.target.dataset.dfill) {
         e.preventDefault();
@@ -1956,13 +2121,31 @@ const DeliveryModule = {
     });
 
     document.getElementById("view-delivery").addEventListener("click", (e) => {
+      if (e.target.dataset.toggleEdit) {
+        document.getElementById(e.target.dataset.toggleEdit).classList.toggle("hidden");
+        this.updateAutoLabels();
+      }
       if (e.target.dataset.loadDtask) {
         this.loadTask(e.target.dataset.loadDtask, parseInt(e.target.dataset.dopenStage || "1", 10));
+      }
+      if (e.target.dataset.cancelDtask) {
+        this.openCancelTaskModal(e.target.dataset.cancelDtask);
       }
       if (e.target.dataset.inspectDtask) {
         this.openReportModal(e.target.dataset.inspectDtask);
       }
+      if (e.target.dataset.loadPbatch && typeof PostageModule !== "undefined") {
+        PostageModule.loadBatch(e.target.dataset.loadPbatch, parseInt(e.target.dataset.pstage || "1", 10));
+      }
+      if (e.target.dataset.inspectPbatch && typeof PostageModule !== "undefined") {
+        PostageModule.openReportModal(e.target.dataset.inspectPbatch);
+      }
     });
+
+    // Cancel Scheduled Task Modal Listeners
+    document.getElementById("btnCloseCancelTaskModal").addEventListener("click", () => document.getElementById("cancelTaskModal").classList.add("hidden"));
+    document.getElementById("btnAbortCancelTask").addEventListener("click", () => document.getElementById("cancelTaskModal").classList.add("hidden"));
+    document.getElementById("btnConfirmCancelTask").addEventListener("click", () => this.confirmCancelTask());
 
     document.getElementById("btnSortTasksAuto").addEventListener("click", () => {
       this.renderActiveTasks();
@@ -1976,12 +2159,19 @@ const DeliveryModule = {
         this.renderUnreportedTasks();
       }
     });
-    document.getElementById("btnSelectAllUnrep").addEventListener("click", () => {
-      AppStore.deliveries
-        .filter(t => (t.Direction || "Outward") === "Outward" && t.Delivery_Status === "Delivered" && !t.Receipt_Given)
-        .forEach(t => this.selectedUnrepIds.add(t.Task_ID));
+
+    // Select All / Deselect All Checkbox Toggle in Completed Tab
+    document.getElementById("chkSelectAllUnrep").addEventListener("change", (e) => {
+      if (e.target.checked) {
+        AppStore.deliveries
+          .filter(t => !this.isCancelledTask(t) && (t.Direction || "Outward") === "Outward" && t.Delivery_Status === "Delivered" && !t.Receipt_Given)
+          .forEach(t => this.selectedUnrepIds.add(t.Task_ID));
+      } else {
+        this.selectedUnrepIds.clear();
+      }
       this.renderUnreportedTasks();
     });
+
     document.getElementById("btnBatchReportUnrep").addEventListener("click", () => {
       this.openGroupReportModal();
     });
@@ -2009,7 +2199,6 @@ const DeliveryModule = {
       this.saveGroupReport();
     });
 
-    // Collapsible Reported Advanced Filters Toggle
     document.getElementById("btnToggleHistoryFilters").addEventListener("click", () => {
       this.filtersOpen = !this.filtersOpen;
       document.getElementById("dHistoryAdvancedFilters").classList.toggle("hidden", !this.filtersOpen);
@@ -2058,7 +2247,7 @@ const DeliveryModule = {
     document.getElementById("btnRequestDeleteHistory").addEventListener("click", () => {
       document.getElementById("deliveryDeleteWarningBox").classList.remove("hidden");
       document.getElementById("deliveryEditWarningBox").classList.add("hidden");
-      document.getElementById("deliveryReportFooter").classList.remove("hidden");
+      document.getElementById("deliveryReportFooter").classList.add("hidden");
     });
     document.getElementById("btnCancelHistoryDeleteWarn").addEventListener("click", () => {
       document.getElementById("deliveryDeleteWarningBox").classList.add("hidden");
