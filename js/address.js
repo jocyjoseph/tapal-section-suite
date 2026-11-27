@@ -51,9 +51,6 @@ const AddressModule = {
     if (subName === "queue") this.renderQueue();
   },
 
-  // =========================================================
-  // PHONETIC / FUZZY SEARCH (HANDLES MALAYALAM SPELLINGS)
-  // =========================================================
   normalizePhonetic(str) {
     return String(str || "")
       .toLowerCase()
@@ -97,7 +94,6 @@ const AddressModule = {
     });
   },
 
-  // Alphabetical District Dropdown ("All" + A-Z Districts)
   renderDistrictFilters() {
     const sel = document.getElementById("addrDistrictSelect");
     if (!sel) return;
@@ -139,13 +135,25 @@ const AddressModule = {
       const queuedCount = this.queue.filter(q => String(q.Code) === String(a.Code)).length;
       const addrSummary = [a.Address_Line_1, a.Address_Line_2, a.District, a.PIN ? `PIN ${a.PIN}` : ""].filter(Boolean).join(", ");
 
-      const prinDisplay = a.Principal_Phone
-        ? `<a href="tel:${a.Principal_Phone}" class="phone-link">📞 ${a.Principal_Phone}</a>${a.Principal_Name ? ` (${a.Principal_Name})` : ""}`
-        : `<button type="button" class="link-add-phone" data-edit-addr="${a.Code}">+ Add phone number</button>`;
+      const prinRow = a.Principal_Phone
+        ? `<div class="contact-line-row">
+             <span><strong>Principal:</strong> ${a.Principal_Phone}${a.Principal_Name ? ` (${a.Principal_Name})` : ""}</span>
+             <a href="tel:${a.Principal_Phone}" class="btn-call-pill">📞 Call</a>
+           </div>`
+        : `<div class="contact-line-row">
+             <span class="muted"><strong>Principal:</strong> —</span>
+             <button type="button" class="link-add-phone" data-edit-addr="${a.Code}">+ Add</button>
+           </div>`;
 
-      const clerkDisplay = a.Clerk_Phone
-        ? `<a href="tel:${a.Clerk_Phone}" class="phone-link">📞 ${a.Clerk_Phone}</a>${a.Clerk_Name ? ` (${a.Clerk_Name})` : ""}`
-        : `<button type="button" class="link-add-phone" data-edit-addr="${a.Code}">+ Add phone number</button>`;
+      const clerkRow = a.Clerk_Phone
+        ? `<div class="contact-line-row">
+             <span><strong>Clerk:</strong> ${a.Clerk_Phone}${a.Clerk_Name ? ` (${a.Clerk_Name})` : ""}</span>
+             <a href="tel:${a.Clerk_Phone}" class="btn-call-pill">📞 Call</a>
+           </div>`
+        : `<div class="contact-line-row">
+             <span class="muted"><strong>Clerk:</strong> —</span>
+             <button type="button" class="link-add-phone" data-edit-addr="${a.Code}">+ Add</button>
+           </div>`;
 
       return `
         <div class="history-item">
@@ -160,8 +168,8 @@ const AddressModule = {
           <div class="small muted mt-6">${addrSummary || "No street line entered"}</div>
 
           <div class="contact-strip">
-            <div class="contact-line"><strong>Principal:</strong> ${prinDisplay}</div>
-            <div class="contact-line"><strong>Clerk:</strong> ${clerkDisplay}</div>
+            ${prinRow}
+            ${clerkRow}
           </div>
 
           <div class="row-between mt-8">
@@ -174,9 +182,6 @@ const AddressModule = {
     }).join("");
   },
 
-  // =========================================================
-  // DISPATCH QUEUE & RECIPIENT DESIGNATION ASSIGNMENT
-  // =========================================================
   addToQueue(addrObj, customDesig = "") {
     const qKey = "Q-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6);
     const entry = {
@@ -230,9 +235,6 @@ const AddressModule = {
     }).join("");
   },
 
-  // =========================================================
-  // LOCKED EDIT MODAL WITH DIFF REVIEW & OVERWRITE WARNING
-  // =========================================================
   openEditAddressModal(code) {
     const addr = AppStore.addresses.find(a => String(a.Code) === String(code));
     if (!addr) return;
@@ -330,9 +332,6 @@ const AddressModule = {
     showToast("Contact updated & synced ✓");
   },
 
-  // =========================================================
-  // LARGE FONT READER & A4 STICKER SHEET PRINT ENGINE
-  // =========================================================
   openLargeReader(items, startIndex = 0) {
     if (!items.length) {
       showToast("No addresses to display.");
