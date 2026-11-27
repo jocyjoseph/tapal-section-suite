@@ -6,8 +6,9 @@
   <meta name="theme-color" content="#0f4c81" />
   <title>VHSE Tapal Suite</title>
   <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
+  <link rel="apple-touch-icon" href="./icon-192.png" />
   <link rel="stylesheet" href="style.css" />
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 </head>
 <body>
@@ -64,17 +65,12 @@
     </div>
 
     <div id="psub-entry" class="psub-panel">
-      <div class="entry-top-strip">
-        <button type="button" id="btnNewBatch" class="btn btn-primary btn-icon">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-          <span>New</span>
-        </button>
-        <div id="pendingBatchesBar" class="chip-scroll"></div>
-      </div>
-
       <div class="som-strip">
-        <span id="postageBannerTitle" class="som-strip-title">SOM #101</span>
-        <span id="postageStageBadge" class="badge primary">Ready</span>
+        <div class="row-gap">
+          <span id="postageBannerTitle" class="som-strip-title">SOM #101</span>
+          <span id="postageStageBadge" class="badge primary">Ready</span>
+        </div>
+        <button type="button" id="btnNewBatch" class="btn-mini">Reset</button>
       </div>
 
       <!-- STAGE 1: PREPARATION -->
@@ -90,32 +86,39 @@
           <span class="chevron" id="pChev1">▶</span>
         </div>
         <div class="accordion-body collapsed" id="pBody1">
+          <!-- Compact Auto-Generated SOM & Date/Time Strip -->
           <div class="form-group">
-            <label>Date & Time</label>
-            <div class="dt-controls">
-              <input type="datetime-local" id="pReceivedDT" />
-              <button type="button" class="btn-mini" data-step-dt="pReceivedDT" data-days="-1">−1d</button>
-              <button type="button" class="btn-mini" data-step-dt="pReceivedDT" data-days="1">+1d</button>
-              <button type="button" class="btn-mini accent" data-now-dt="pReceivedDT">Now</button>
+            <div class="auto-dt-strip">
+              <span class="auto-dt-value" id="pStage1AutoLabel">SOM #101 • Now</span>
+              <button type="button" class="btn-mini" data-toggle-edit="pStage1AutoFields">✎ Edit</button>
+            </div>
+            <div id="pStage1AutoFields" class="hidden mt-8">
+              <div class="form-group" style="margin-top:0;">
+                <label>SOM Number</label>
+                <div class="stepper-row">
+                  <button type="button" class="step-btn" id="btnSomMinus">−</button>
+                  <input type="text" id="pSomNumber" placeholder="SOM #" />
+                  <button type="button" class="step-btn" id="btnSomPlus">+</button>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Date & Time</label>
+                <div class="dt-controls">
+                  <input type="datetime-local" id="pReceivedDT" />
+                  <button type="button" class="btn-mini" data-step-dt="pReceivedDT" data-days="-1">−1d</button>
+                  <button type="button" class="btn-mini" data-step-dt="pReceivedDT" data-days="1">+1d</button>
+                  <button type="button" class="btn-mini accent" data-now-dt="pReceivedDT">Now</button>
+                </div>
+              </div>
             </div>
           </div>
-          <div class="form-group">
-            <label>SOM Number</label>
-            <div class="stepper-row">
-              <button type="button" class="step-btn" id="btnSomMinus">−</button>
-              <input type="text" id="pSomNumber" placeholder="SOM #" />
-              <button type="button" class="step-btn" id="btnSomPlus">+</button>
-            </div>
-          </div>
+
           <div class="form-group">
             <div class="row-between mb-6">
               <label style="margin:0;">Barcodes (Import LoMag or Manual)</label>
               <div class="row-gap">
                 <input type="file" id="lomagFileInput" accept=".xls,.xlsx,.csv,.txt" class="hidden" />
                 <button type="button" id="btnImportLoMag" class="btn-mini accent">📂 Import LoMag (.xls)</button>
-                <button type="button" id="btnToggleBatchScanner" class="btn-mini">
-                  <span id="scanBtnText">📷 Scan</span>
-                </button>
               </div>
             </div>
             <div class="scanner-compact">
@@ -128,7 +131,6 @@
                 </select>
                 <button type="button" id="btnAddManualBarcode" class="btn btn-primary btn-sm">+</button>
               </div>
-              <div id="qrReaderBox" class="qr-box hidden"></div>
               <div id="scannedBarcodeList" class="chip-wrap mt-6"></div>
             </div>
           </div>
@@ -152,7 +154,7 @@
                 </div>
               </div>
               <div class="count-tile">
-                <span class="tile-lbl">Ord</span>
+                <span class="tile-lbl">Ordinary</span>
                 <div class="stepper-row">
                   <button type="button" class="step-btn" data-count-target="pOrdPosts" data-delta="-1">−</button>
                   <input type="number" id="pOrdPosts" value="0" min="0" />
@@ -206,8 +208,11 @@
             </div>
           </div>
           <div class="form-group">
-            <label>Date & Time</label>
-            <div class="dt-controls">
+            <div class="auto-dt-strip">
+              <span class="auto-dt-value" id="pDeliveredDTLabel">Posting Time: Now</span>
+              <button type="button" class="btn-mini" data-toggle-edit="pDeliveredDTWrap">✎ Edit</button>
+            </div>
+            <div id="pDeliveredDTWrap" class="dt-controls hidden mt-6">
               <input type="datetime-local" id="pDeliveredDT" />
               <button type="button" class="btn-mini" data-step-dt="pDeliveredDT" data-days="-1">−1d</button>
               <button type="button" class="btn-mini" data-step-dt="pDeliveredDT" data-days="1">+1d</button>
@@ -248,8 +253,11 @@
             </div>
           </div>
           <div class="form-group">
-            <label>Date & Time</label>
-            <div class="dt-controls">
+            <div class="auto-dt-strip">
+              <span class="auto-dt-value" id="pGivenDTLabel">Reporting Time: Now</span>
+              <button type="button" class="btn-mini" data-toggle-edit="pGivenDTWrap">✎ Edit</button>
+            </div>
+            <div id="pGivenDTWrap" class="dt-controls hidden mt-6">
               <input type="datetime-local" id="pGivenDT" />
               <button type="button" class="btn-mini" data-step-dt="pGivenDT" data-days="-1">−1d</button>
               <button type="button" class="btn-mini" data-step-dt="pGivenDT" data-days="1">+1d</button>
@@ -279,12 +287,8 @@
         <div class="micro-label">Search</div>
         <div class="row-gap">
           <input type="text" id="postageSearchInput" autocomplete="off" />
-          <button type="button" id="btnScanSearch" class="btn btn-primary btn-icon" title="Scan barcode">
-            <svg viewBox="0 0 24 24" width="17" height="17" fill="currentColor"><path d="M9.5 6.5v3h-3v-3h3M11 5H5v6h6V5zm-1.5 9.5v3h-3v-3h3M11 13H5v6h6v-6zm6.5-6.5v3h-3v-3h3M19 5h-6v6h6V5zm-6 8h1.5v1.5H13V13zm1.5 1.5H16V16h-1.5v-1.5zM16 13h1.5v1.5H16V13zm-3 3h1.5v1.5H13V16zm1.5 1.5H16V19h-1.5v-1.5zM16 16h1.5v1.5H16V16zm1.5-1.5H19V16h-1.5v-1.5zm0 3H19V19h-1.5v-1.5z"/></svg>
-          </button>
           <button type="button" id="btnClearSearch" class="btn btn-secondary btn-sm">×</button>
         </div>
-        <div id="searchQrBox" class="qr-box hidden mt-8"></div>
       </section>
       <section class="card">
         <div class="row-between">
@@ -367,10 +371,13 @@
             </div>
           </div>
 
-          <!-- 1. Date & Time -->
+          <!-- 1. Compact Auto Date & Time -->
           <div class="form-group">
-            <label id="lblDCreatedDT">1. Date & Time</label>
-            <div class="dt-controls">
+            <div class="auto-dt-strip">
+              <span class="auto-dt-value" id="dCreatedDTLabel">Date & Time: Now</span>
+              <button type="button" class="btn-mini" data-toggle-edit="dCreatedDTWrap">✎ Edit</button>
+            </div>
+            <div id="dCreatedDTWrap" class="dt-controls hidden mt-6">
               <input type="datetime-local" id="dCreatedDT" />
               <button type="button" class="btn-mini" data-step-dt="dCreatedDT" data-days="-1">−1d</button>
               <button type="button" class="btn-mini" data-step-dt="dCreatedDT" data-days="1">+1d</button>
@@ -381,18 +388,18 @@
           <!-- ENQUIRY STAGE 1 FIELDS -->
           <div id="dEnquiryStage1Wrap" class="hidden">
             <div class="form-group">
-              <label>2. Enquirer</label>
+              <label>1. Enquirer</label>
               <input type="text" id="dEnquirerName" placeholder="Staff / clerk requesting enquiry..." />
               <div id="dEnquirerChips" class="chip-wrap"></div>
             </div>
             <div class="form-group">
-              <label>3. To Office</label>
+              <label>2. To Office</label>
               <input type="text" id="dEnquiryOfficeName" list="dOfficeList" placeholder="Select or type office name..." />
               <div id="dEnquiryOfficeChips" class="chip-wrap"></div>
             </div>
             <div class="form-group">
               <div class="row-between mb-6">
-                <label style="margin:0;">4. Enquiry / ies</label>
+                <label style="margin:0;">3. Enquiry / ies</label>
                 <button type="button" id="btnAddEnquiryItem" class="btn-mini accent">+ Add Enquiry</button>
               </div>
               <div id="dDynamicEnquiriesWrap"></div>
@@ -402,47 +409,47 @@
           <!-- DOCUMENT STAGE 1 FIELDS -->
           <div id="dDocumentStage1Wrap">
             <div class="form-group hidden" id="dRtFileGivenByGroup">
-              <label>2. File Given by</label>
+              <label>1. File Given by</label>
               <input type="text" id="dFileGivenBy" placeholder="Staff who handed over the file..." />
               <div id="dFileGivenByChips" class="chip-wrap"></div>
             </div>
 
             <div class="form-group" id="dOfficeNameGroup">
-              <label id="lblDOfficeName">2. To Office Name</label>
+              <label id="lblDOfficeName">1. To Office Name</label>
               <input type="text" id="dOfficeName" list="dOfficeList" placeholder="Select or type office name..." />
               <div id="dOfficeChips" class="chip-wrap"></div>
             </div>
             <datalist id="dOfficeList"></datalist>
 
             <div class="form-group" id="dDesignationGroup">
-              <label id="lblDDesignation">3. Designation</label>
+              <label id="lblDDesignation">2. Designation</label>
               <input type="text" id="dDesignation" list="dDesigList" placeholder="Select or type designation..." />
               <div id="dDesigChips" class="chip-wrap"></div>
             </div>
             <datalist id="dDesigList"></datalist>
 
             <div class="form-group" id="dSectionGroup">
-              <label id="lblDSection">4. Section</label>
+              <label id="lblDSection">3. Section</label>
               <input type="text" id="dSection" list="dSectionList" placeholder="Select or type section..." />
               <div id="dSectionChips" class="chip-wrap"></div>
             </div>
             <datalist id="dSectionList"></datalist>
 
             <div class="form-group hidden" id="dNilVisitRemarksGroup">
-              <label>4. Visit Remarks / Official Contacted <span class="muted small">(Optional)</span></label>
+              <label>3. Visit Remarks / Official Contacted <span class="muted small">(Optional)</span></label>
               <input type="text" id="dNilVisitRemarks" placeholder="e.g. Checked with Tapal clerk; no pending files..." />
             </div>
 
             <div id="dFileItemsSectionWrap">
               <div class="form-group">
-                <label id="lblDNature">5. Nature of File / Document</label>
+                <label id="lblDNature">4. Nature of File / Document</label>
                 <input type="text" id="dNature" list="dNatureList" value="File" placeholder="e.g. File, Tapal, Cheque, Bill..." />
                 <div id="dNatureChips" class="chip-wrap"></div>
               </div>
               <datalist id="dNatureList"></datalist>
 
               <div class="form-group">
-                <label id="lblDItemCount">6. No. of File / Document</label>
+                <label id="lblDItemCount">5. No. of File / Document</label>
                 <div class="row-gap">
                   <div class="stepper-row" style="max-width:160px;">
                     <button type="button" class="step-btn" id="btnDCountMinus">−</button>
@@ -456,12 +463,12 @@
                 </div>
               </div>
               <div class="form-group">
-                <label id="lblDItemNumbers">7. File Number & Description</label>
+                <label id="lblDItemNumbers">6. File Number & Description</label>
                 <div id="dDynamicItemsWrap"></div>
                 <div id="dPatternChips" class="chip-wrap"></div>
               </div>
               <div class="form-group">
-                <label id="lblDAttachments">8. Attachments?</label>
+                <label id="lblDAttachments">7. Attachments?</label>
                 <div class="toggle-row" id="dAttachToggleGroup">
                   <button type="button" class="toggle-btn" data-val="Yes">Yes</button>
                   <button type="button" class="toggle-btn selected" data-val="No">No</button>
@@ -482,7 +489,7 @@
                 </div>
               </div>
               <div class="form-group" id="dPlannedDTGroup">
-                <label>9. Planned Delivery Time</label>
+                <label>8. Planned Delivery Time</label>
                 <div class="dt-controls">
                   <input type="datetime-local" id="dPlannedDT" data-allow-future="true" />
                   <button type="button" class="btn-mini accent" id="btnDPlanToday3PM">3 PM</button>
@@ -533,8 +540,11 @@
               <div id="dNotDelivChips" class="chip-wrap"></div>
             </div>
             <div class="form-group">
-              <label id="lblDCompletedDT">3. Date & Time</label>
-              <div class="dt-controls">
+              <div class="auto-dt-strip">
+                <span class="auto-dt-value" id="dCompletedDTLabel">Date & Time: Now</span>
+                <button type="button" class="btn-mini" data-toggle-edit="dCompletedDTWrap">✎ Edit</button>
+              </div>
+              <div id="dCompletedDTWrap" class="dt-controls hidden mt-6">
                 <input type="datetime-local" id="dCompletedDT" />
                 <button type="button" class="btn-mini" data-step-dt="dCompletedDT" data-days="-1">−1d</button>
                 <button type="button" class="btn-mini" data-step-dt="dCompletedDT" data-days="1">+1d</button>
@@ -542,12 +552,12 @@
               </div>
             </div>
             <div class="form-group">
-              <label id="lblDStage2Receiver">4. Receiver's Name</label>
+              <label id="lblDStage2Receiver">3. Receiver's Name</label>
               <input type="text" id="dStage2ReceiverName" placeholder="Name of person who received the file/document..." />
               <div id="dStage2ReceiverChips" class="chip-wrap"></div>
             </div>
             <div class="form-group">
-              <label>5. Comments</label>
+              <label>4. Comments</label>
               <input type="text" id="dStage2Comments" placeholder="Delivery / handover notes..." />
             </div>
           </div>
@@ -563,8 +573,11 @@
               <div id="dRespondentChips" class="chip-wrap"></div>
             </div>
             <div class="form-group">
-              <label>3. Date & Time of Reply</label>
-              <div class="dt-controls">
+              <div class="auto-dt-strip">
+                <span class="auto-dt-value" id="dReplyDTLabel">Reply Time: Now</span>
+                <button type="button" class="btn-mini" data-toggle-edit="dReplyDTWrap">✎ Edit</button>
+              </div>
+              <div id="dReplyDTWrap" class="dt-controls hidden mt-6">
                 <input type="datetime-local" id="dReplyDT" />
                 <button type="button" class="btn-mini" data-step-dt="dReplyDT" data-days="-1">−1d</button>
                 <button type="button" class="btn-mini" data-step-dt="dReplyDT" data-days="1">+1d</button>
@@ -615,13 +628,16 @@
             </div>
             <div id="dReceiptYesFields" class="hidden">
               <div class="form-group">
-                <label>3. Receipt Receiver's Name</label>
+                <label>2. Receipt Receiver's Name</label>
                 <input type="text" id="dReceiverName" placeholder="Staff who received the signed receipt" />
                 <div id="dReceiverChips" class="chip-wrap"></div>
               </div>
               <div class="form-group">
-                <label>4. Date & Time of Receiving</label>
-                <div class="dt-controls">
+                <div class="auto-dt-strip">
+                  <span class="auto-dt-value" id="dReportedDTLabel">Receipt Time: Now</span>
+                  <button type="button" class="btn-mini" data-toggle-edit="dReportedDTWrap">✎ Edit</button>
+                </div>
+                <div id="dReportedDTWrap" class="dt-controls hidden mt-6">
                   <input type="datetime-local" id="dReportedDT" />
                   <button type="button" class="btn-mini" data-step-dt="dReportedDT" data-days="-1">−1d</button>
                   <button type="button" class="btn-mini" data-step-dt="dReportedDT" data-days="1">+1d</button>
@@ -641,8 +657,11 @@
             </div>
             <div id="dEnquiryReportedDetails" class="hidden">
               <div class="form-group">
-                <label>2. Date & Time of Reporting</label>
-                <div class="dt-controls">
+                <div class="auto-dt-strip">
+                  <span class="auto-dt-value" id="dEnquiryReportedDTLabel">Reporting Time: Now</span>
+                  <button type="button" class="btn-mini" data-toggle-edit="dEnquiryReportedDTWrap">✎ Edit</button>
+                </div>
+                <div id="dEnquiryReportedDTWrap" class="dt-controls hidden mt-6">
                   <input type="datetime-local" id="dEnquiryReportedDT" />
                   <button type="button" class="btn-mini" data-step-dt="dEnquiryReportedDT" data-days="-1">−1d</button>
                   <button type="button" class="btn-mini" data-step-dt="dEnquiryReportedDT" data-days="1">+1d</button>
@@ -650,7 +669,7 @@
                 </div>
               </div>
               <div class="form-group">
-                <label>3. Method of Reporting</label>
+                <label>2. Method of Reporting</label>
                 <input type="text" id="dReportMethodInput" placeholder="Direct, Phone Call, SMS, WhatsApp..." />
                 <div class="chip-wrap" id="dReportMethodGroup">
                   <button type="button" class="smart-chip" data-rmethod="Direct">Direct</button>
@@ -662,7 +681,7 @@
               </div>
             </div>
             <div class="form-group">
-              <label>4. Comments</label>
+              <label>3. Comments</label>
               <input type="text" id="dEnquiryComments" placeholder="Reporting notes..." />
             </div>
           </div>
@@ -674,8 +693,11 @@
               <div id="dRtDocReceiverChips" class="chip-wrap"></div>
             </div>
             <div class="form-group">
-              <label>2. Date & Time</label>
-              <div class="dt-controls">
+              <div class="auto-dt-strip">
+                <span class="auto-dt-value" id="dRtReturnDTLabel">Return Time: Now</span>
+                <button type="button" class="btn-mini" data-toggle-edit="dRtReturnDTWrap">✎ Edit</button>
+              </div>
+              <div id="dRtReturnDTWrap" class="dt-controls hidden mt-6">
                 <input type="datetime-local" id="dRtReturnDT" />
                 <button type="button" class="btn-mini" data-step-dt="dRtReturnDT" data-days="-1">−1d</button>
                 <button type="button" class="btn-mini" data-step-dt="dRtReturnDT" data-days="1">+1d</button>
@@ -683,7 +705,7 @@
               </div>
             </div>
             <div class="form-group">
-              <label>3. Receipt Received?</label>
+              <label>2. Receipt Received?</label>
               <div class="toggle-row" id="dRtReceiptGivenGroup">
                 <button type="button" class="toggle-btn" data-val="Yes">Yes (Given)</button>
                 <button type="button" class="toggle-btn" data-val="No">No (Not Given)</button>
@@ -702,7 +724,7 @@
               </div>
             </div>
             <div class="form-group">
-              <label>4. Comments</label>
+              <label>3. Comments</label>
               <input type="text" id="dRtComments" placeholder="Final return notes..." />
             </div>
           </div>
@@ -712,33 +734,30 @@
       </section>
     </div>
 
-    <!-- SCHEDULED TAB -->
+    <!-- UNIFIED SCHEDULED TAB (Includes Delivery, Enquiry, Round-Trip & Prepared Postage SOMs) -->
     <div id="dsub-tasks" class="dsub-panel hidden">
       <div class="row-between mb-8">
-        <div class="toggle-row" id="dScheduledDirTabs" style="flex:1; margin-right:8px;">
-          <button type="button" class="toggle-btn selected" data-durg="OUTWARD">📤 Outward (<span id="dOutwardTasksCount">0</span>)</button>
-          <button type="button" class="toggle-btn" data-durg="INWARD">📥 Inward (<span id="dInwardTasksCount">0</span>)</button>
-        </div>
+        <span class="micro-label" style="margin:0;">Scheduled Tasks (Sorted by Urgency)</span>
         <button type="button" id="btnSortTasksAuto" class="btn-mini accent">⇅ Sort</button>
       </div>
       <div id="dActiveTasksList"></div>
     </div>
 
-    <!-- COMPLETED TAB -->
+    <!-- COMPLETED TAB (Includes Delivered Outward, Collected Inward, Replied Enquiries & Sent Postage SOMs) -->
     <div id="dsub-unreported" class="dsub-panel hidden">
       <section class="card">
         <div class="row-between">
-          <span class="micro-label" style="margin:0;">Completed (<span id="dSelectedUnrepCount">0</span>)</span>
-          <div class="row-gap">
-            <button type="button" id="btnSelectAllUnrep" class="btn-mini">All</button>
-            <button type="button" id="btnBatchReportUnrep" class="btn btn-success btn-sm">Report Selected →</button>
-          </div>
+          <label class="row-gap" style="margin:0; cursor:pointer;">
+            <input type="checkbox" id="chkSelectAllUnrep" style="width:17px; height:17px;" />
+            <span class="micro-label" style="margin:0;">All (<span id="dSelectedUnrepCount">0</span>)</span>
+          </label>
+          <button type="button" id="btnBatchReportUnrep" class="btn btn-success btn-sm">Report Selected →</button>
         </div>
       </section>
       <div id="dUnreportedTasksList"></div>
     </div>
 
-    <!-- REPORTED TAB (COLLAPSIBLE ADVANCED SEARCH & FILTERS + LABELED DATE INPUTS) -->
+    <!-- REPORTED TAB -->
     <div id="dsub-history" class="dsub-panel hidden">
       <section class="card">
         <div class="row-gap">
@@ -1085,7 +1104,26 @@
     </div>
   </div>
 
-  <!-- Read-Only Postage SOM Detailed Report Modal -->
+  <!-- Cancel Scheduled Task Confirmation Modal -->
+  <div id="cancelTaskModal" class="modal hidden no-print">
+    <div class="modal-card" style="max-width:420px;">
+      <div class="row-between">
+        <h3 style="margin:0; color:var(--danger);">Cancel Scheduled Task?</h3>
+        <button type="button" id="btnCloseCancelTaskModal" class="btn btn-secondary btn-sm">×</button>
+      </div>
+      <div class="small mt-8" id="cancelTaskSummary"></div>
+      <div class="form-group">
+        <label>Reason for Cancellation <span class="muted small">(Optional)</span></label>
+        <input type="text" id="cancelTaskReason" placeholder="e.g. File recalled, duplicate entry, postponed..." />
+      </div>
+      <div class="row-gap mt-12">
+        <button type="button" id="btnConfirmCancelTask" class="btn btn-danger btn-sm" style="flex:1;">Yes, Cancel Task</button>
+        <button type="button" id="btnAbortCancelTask" class="btn btn-secondary btn-sm">Keep Task</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Structured 3-Section SOM Detailed Report Modal -->
   <div id="postageReportModal" class="modal hidden no-print">
     <div class="modal-card" style="max-width:460px; max-height:90vh; overflow-y:auto;">
       <div class="row-between">
